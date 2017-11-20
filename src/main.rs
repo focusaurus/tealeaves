@@ -2,7 +2,7 @@
 extern crate clap;
 extern crate tealeaves;
 use clap::{Arg, App};
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 
 fn main() {
     let matches = App::new("tealeaves")

@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
-use std::{cmp, fs, io, path, fmt};
+use std::path::{PathBuf,Path};
+use std::{io, path, fmt};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 enum MessageKind {
@@ -8,51 +8,52 @@ enum MessageKind {
     Ok,
 }
 
+#[test]
+fn test_message_kind_order() {
+    assert!(MessageKind::Error < MessageKind::Warning);
+    assert!(MessageKind::Warning < MessageKind::Ok);
+    assert!(MessageKind::Error < MessageKind::Ok);
+    assert!(MessageKind::Ok > MessageKind::Warning);
+}
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 struct Check {
     kind: MessageKind,
     message: String,
 }
-//
-// impl PartialOrd for Check {
-//     fn partial_cmp(&self, other: &Check) -> Option<cmp::Ordering> {
-//         Some(self.kind.cmp(&other.kind))
-//     }
-// }
-// impl PartialEq for Check {
-//     fn eq(&self, other: &Check) -> bool {
-//         self.kind == other.kind && self.message == other.message
-//     }
-// }
-//
-// impl Ord for Check {
-//     fn cmp(&self, other: &Check) -> cmp::Ordering {
-//         match (self.kind, other.kind) {
-//             (MessageKind::Error, MessageKind::Error) => Some(cmp::Ordering::Same),
-//             (MessageKind::Error, MessageKind::Warning) => Some(cmp::Ordering::Greater),
-//             (MessageKind::Error, MessageKind::Ok) => Some(cmp::Ordering::Greater),
-//             (MessageKind::Warning, MessageKind::Error) => Some(cmp::Ordering::Less),
-//             (MessageKind::Warning, MessageKind::Warning) => Some(cmp::Ordering::Same),
-//             (MessageKind::Warning, MessageKind::Ok) => Some(cmp::Ordering::Greater),
-//             (MessageKind::Ok, MessageKind::Error) => Some(cmp::Ordering::Greater),
-//             (MessageKind::Ok, MessageKind::Warning) => Some(cmp::Ordering::Less),
-//             (MessageKind::Ok, MessageKind::Ok) => Some(cmp::Ordering::Same),
-//         }
-//         // self.height.cmp(&other.height)
-//     }
-// }
-//
-// impl PartialEq for Check {
-//     fn eq(&self, other: &Check) -> bool {
-//         self.kind == other.kind && self.message == other.message
-//     }
-// }
-//
-// impl Eq for Check {
-//     fn eq(&self, other: &Check) -> bool {
-//         self.kind == other.kind && self.message == other.message
-//     }
-// }
+
+impl Check {
+    fn error(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+            kind: MessageKind::Error,
+        }
+    }
+    fn warning(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+            kind: MessageKind::Warning,
+        }
+    }
+    fn ok(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+            kind: MessageKind::Ok,
+        }
+    }
+}
+
+#[test]
+fn test_check_order() {
+    let error = Check::error("");
+    let warning = Check::warning("");
+    let ok = Check::ok("");
+    assert!(error < warning);
+    assert!(warning < ok);
+    assert!(ok > warning);
+    assert!(ok > error);
+}
+
 #[derive(Debug)]
 pub struct FileInfo {
     path_buf: path::PathBuf,
@@ -77,38 +78,17 @@ impl fmt::Display for FileInfo {
     }
 }
 
-fn ok(message: &str) -> Check {
-    Check {
-        kind: MessageKind::Ok,
-        message: message.to_string(),
-    }
-}
-
-fn warning(message: &str) -> Check {
-    Check {
-        kind: MessageKind::Warning,
-        message: message.to_string(),
-    }
-}
-
-fn error(message: &str) -> Check {
-    Check {
-        kind: MessageKind::Error,
-        message: message.to_string(),
-    }
-}
-
 pub fn scan(path: &Path) -> io::Result<FileInfo> {
     let mut checks: Vec<Check> = vec![];
     if !path.exists() {
-        checks.push(error("Not found"));
+        checks.push(Check::error("Not found"));
         return Ok(FileInfo {
                       path_buf: path.to_path_buf(),
                       checks,
                   });
     }
     if path.is_dir() {
-        checks.push(ok("is a directory"));
+        checks.push(Check::ok("is a directory"));
         // for entry in fs::read_dir(path)? {
         //     let entry = entry?;
         //     let path = entry.path();
@@ -119,7 +99,7 @@ pub fn scan(path: &Path) -> io::Result<FileInfo> {
         //     }
         // }
     } else {
-        checks.push(ok("is a file"));
+        checks.push(Check::ok("is a file"));
     }
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
