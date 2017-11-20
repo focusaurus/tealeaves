@@ -1,5 +1,6 @@
 use std::{io, fs, path, fmt};
 use std::io::BufRead;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
@@ -97,12 +98,16 @@ pub fn scan(path: &Path) -> io::Result<FileInfo> {
                         checks.push(Check::warning("is empty"));
                     },
                     1...4096 => {
-                        checks.push(Check::warning("reasonable size"));
+                        checks.push(Check::ok("reasonable size"));
                     },
                     _ => {
                         checks.push(Check::warning("too big to be interesting"));
                     },
                 }
+                let mode = metadata.permissions().mode();
+                let can_read = mode & 0o500 != 0;
+                let can_write = mode & 0o050 != 0;
+                println!("DEBUG3 {:?}, {:?}", mode, can_write);
             }
 
         },
