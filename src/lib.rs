@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::{fs, io, path};
+use std::{fs, io, path,fmt};
 
 #[derive(Debug)]
 enum MessageKind {
@@ -18,6 +18,12 @@ struct Check {
 pub struct FileInfo {
     path_buf: path::PathBuf,
     checks: Vec<Check>,
+}
+
+impl fmt::Display for FileInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "FILE: {} {}", self.path_buf.to_str().unwrap(), self.checks.len())
+    }
 }
 
 fn ok(message: &str) -> Check {
