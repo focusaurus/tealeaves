@@ -1,5 +1,6 @@
-use std::path::{PathBuf,Path};
-use std::{io, path, fmt};
+use std::{io, fs, path, fmt};
+use std::io::BufRead;
+use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 enum MessageKind {
@@ -72,9 +73,11 @@ impl fmt::Display for FileInfo {
                                 MessageKind::Warning => "⚠️",
                                 MessageKind::Ok => "✓",
                             });
+            output.push_str(" ");
             output.push_str(&check.message);
+            output.push('\n');
         }
-        write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
+        write!(out, "{}\n{}\n", self.path_buf.to_str().unwrap(), output)
     }
 }
 
@@ -98,8 +101,39 @@ pub fn scan(path: &Path) -> io::Result<FileInfo> {
         //         cb(&entry);
         //     }
         // }
-    } else {
+    }
+    if path.is_file() {
         checks.push(Check::ok("is a file"));
+        match fs::File::open(path) {
+            Ok(file) => {
+                let reader = io::BufReader::new(&file);
+                let line_count = reader.lines().count();
+                checks.push(Check::ok(&format!("{} lines", line_count)));
+                let reader = io::BufReader::new(&file);
+                let first = reader.lines().nth(0);
+                println!("DEBUG1 {:?}", first);
+                match first {
+                    Some(line) => {
+                        checks.push(Check::ok("has first line"));
+                    }
+                    _ => (),
+                }
+                // .map(|l| { checks.push(Check::ok("has first line")); });
+                let reader = io::BufReader::new(&file);
+                let last = reader.lines().last();
+                match last {
+                    Some(line) => {
+                        checks.push(Check::ok("has last line"));
+                    }
+                    _ => (),
+                }
+                // .map(|l| { checks.push(Check::ok("has last line")); });
+
+            }
+            Err(error) => {
+                checks.push(Check::error("Error opening"));
+            }
+        }
     }
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
