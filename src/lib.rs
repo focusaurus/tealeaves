@@ -1,19 +1,58 @@
 use std::path::{Path, PathBuf};
-use std::{fs, io, path,fmt};
+use std::{cmp, fs, io, path, fmt};
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 enum MessageKind {
-    Ok,
-    Warning,
     Error,
+    Warning,
+    Ok,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 struct Check {
     kind: MessageKind,
     message: String,
 }
-
+//
+// impl PartialOrd for Check {
+//     fn partial_cmp(&self, other: &Check) -> Option<cmp::Ordering> {
+//         Some(self.kind.cmp(&other.kind))
+//     }
+// }
+// impl PartialEq for Check {
+//     fn eq(&self, other: &Check) -> bool {
+//         self.kind == other.kind && self.message == other.message
+//     }
+// }
+//
+// impl Ord for Check {
+//     fn cmp(&self, other: &Check) -> cmp::Ordering {
+//         match (self.kind, other.kind) {
+//             (MessageKind::Error, MessageKind::Error) => Some(cmp::Ordering::Same),
+//             (MessageKind::Error, MessageKind::Warning) => Some(cmp::Ordering::Greater),
+//             (MessageKind::Error, MessageKind::Ok) => Some(cmp::Ordering::Greater),
+//             (MessageKind::Warning, MessageKind::Error) => Some(cmp::Ordering::Less),
+//             (MessageKind::Warning, MessageKind::Warning) => Some(cmp::Ordering::Same),
+//             (MessageKind::Warning, MessageKind::Ok) => Some(cmp::Ordering::Greater),
+//             (MessageKind::Ok, MessageKind::Error) => Some(cmp::Ordering::Greater),
+//             (MessageKind::Ok, MessageKind::Warning) => Some(cmp::Ordering::Less),
+//             (MessageKind::Ok, MessageKind::Ok) => Some(cmp::Ordering::Same),
+//         }
+//         // self.height.cmp(&other.height)
+//     }
+// }
+//
+// impl PartialEq for Check {
+//     fn eq(&self, other: &Check) -> bool {
+//         self.kind == other.kind && self.message == other.message
+//     }
+// }
+//
+// impl Eq for Check {
+//     fn eq(&self, other: &Check) -> bool {
+//         self.kind == other.kind && self.message == other.message
+//     }
+// }
 #[derive(Debug)]
 pub struct FileInfo {
     path_buf: path::PathBuf,
@@ -21,8 +60,20 @@ pub struct FileInfo {
 }
 
 impl fmt::Display for FileInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "FILE: {} {}", self.path_buf.to_str().unwrap(), self.checks.len())
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::new();
+        let mut checks = self.checks.to_vec();
+        checks.sort();
+        for check in checks {
+            output.push_str("\t ");
+            output.push_str(match check.kind {
+                                MessageKind::Error => "🔥",
+                                MessageKind::Warning => "⚠️",
+                                MessageKind::Ok => "✓",
+                            });
+            output.push_str(&check.message);
+        }
+        write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
     }
 }
 
