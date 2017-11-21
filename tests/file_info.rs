@@ -2,7 +2,7 @@ extern crate filesystem;
 extern crate tealeaves;
 use std::path::PathBuf;
 use filesystem::FileSystem;
-use tealeaves::{Check,FileInfo};
+use tealeaves::{Check, FileInfo};
 
 #[test]
 fn test_file_info_display() {

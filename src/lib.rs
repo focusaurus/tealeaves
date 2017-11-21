@@ -1,7 +1,12 @@
-extern crate filesystem;
-use filesystem::FileSystem;
-use filesystem::UnixFileSystem;
-use std::{io, path, fmt};
+// extern crate filesystem;
+// use filesystem::FileSystem;
+// use filesystem::UnixFileSystem;
+extern crate rsfs;
+use rsfs::{GenFS, FileType, Metadata};
+use rsfs::*;
+use rsfs::unix_ext::*;
+use std::{io, path, fmt, ops};
+use std::io::{Read, Write};
 use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
@@ -94,7 +99,7 @@ impl fmt::Display for FileInfo {
         write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
     }
 }
-
+/*
 pub fn scan2<F>(fs: &F, path: &Path) -> io::Result<FileInfo>
     where F: FileSystem + UnixFileSystem
 {
@@ -110,6 +115,42 @@ pub fn scan2<F>(fs: &F, path: &Path) -> io::Result<FileInfo>
         if !can_read {
             checks.push(Check::error("missing read permission"));
         }
+    }
+    let mut path_buf = PathBuf::new();
+    path_buf.push(path);
+
+    Ok(FileInfo { path_buf, checks })
+}
+*/
+// pub fn scan3<F>(fs: &F, path: &Path) -> io::Result<FileInfo>
+//     where F: rsfs::unix_ext::GenFSExt
+//     + rsfs::GenFS
+//     + rsfs::unix_ext::PermissionsExt
+//     + rsfs::unix_ext::FileExt
+pub fn scan3<P: Permissions + PermissionsExt,
+         M: Metadata<Permissions = P>,
+         F: GenFS<Permissions = P, Metadata = M>>
+    (fs: &F,
+     path: &Path)
+     -> io::Result<FileInfo> {
+    let mut checks: Vec<Check> = vec![];
+    let meta = fs.metadata(path).unwrap();
+    if meta.is_dir() {
+        checks.push(Check::ok("is a directory"));
+
+    }
+    if meta.is_file() {
+        checks.push(Check::ok("is a file"));
+        let permissions = meta.permissions();
+        let mode = permissions.mode();
+        let can_read = mode & 0o500 != 0;
+        if !can_read {
+            checks.push(Check::error("missing read permission"));
+        }
+        if meta.is_empty() {
+            checks.push(Check::error("is empty"));
+        }
+
     }
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
