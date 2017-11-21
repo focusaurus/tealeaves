@@ -5,7 +5,7 @@ use std::{io, path, fmt};
 use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-enum MessageKind {
+pub enum MessageKind {
     Error,
     Warning,
     Ok,
@@ -20,25 +20,39 @@ fn test_message_kind_order() {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-struct Check {
+pub struct Check {
     kind: MessageKind,
     message: String,
 }
 
+impl fmt::Display for Check {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::new();
+        output.push_str(match self.kind {
+                            MessageKind::Error => "🔥",
+                            MessageKind::Warning => "⚠️",
+                            MessageKind::Ok => "✓",
+                        });
+        output.push_str(" ");
+        output.push_str(&self.message);
+        write!(out, "{}", output)
+    }
+}
+
 impl Check {
-    fn error(message: &str) -> Self {
+    pub fn error(message: &str) -> Self {
         Self {
             message: message.to_string(),
             kind: MessageKind::Error,
         }
     }
-    fn warning(message: &str) -> Self {
+    pub fn warning(message: &str) -> Self {
         Self {
             message: message.to_string(),
             kind: MessageKind::Warning,
         }
     }
-    fn ok(message: &str) -> Self {
+    pub fn ok(message: &str) -> Self {
         Self {
             message: message.to_string(),
             kind: MessageKind::Ok,
@@ -59,8 +73,14 @@ fn test_check_order() {
 
 #[derive(Debug)]
 pub struct FileInfo {
-    path_buf: path::PathBuf,
-    checks: Vec<Check>,
+    pub path_buf: path::PathBuf,
+    pub checks: Vec<Check>,
+}
+
+impl FileInfo {
+    pub fn new(path_buf: PathBuf, checks: Vec<Check>) -> Self {
+        FileInfo { path_buf, checks }
+    }
 }
 
 impl fmt::Display for FileInfo {
@@ -69,15 +89,7 @@ impl fmt::Display for FileInfo {
         let mut checks = self.checks.to_vec();
         checks.sort();
         for check in checks {
-            output.push_str("\t ");
-            output.push_str(match check.kind {
-                                MessageKind::Error => "🔥",
-                                MessageKind::Warning => "⚠️",
-                                MessageKind::Ok => "✓",
-                            });
-            output.push_str(" ");
-            output.push_str(&check.message);
-            output.push('\n');
+            output.push_str(&format!("\t {}\n", check));
         }
         write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
     }

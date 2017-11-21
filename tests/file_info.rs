@@ -1,6 +1,8 @@
 extern crate filesystem;
 extern crate tealeaves;
+use std::path::PathBuf;
 use filesystem::FileSystem;
+use tealeaves::{Check,FileInfo};
 
 #[test]
 fn test_file_info_display() {
@@ -11,10 +13,7 @@ fn test_file_info_display() {
     checks.push(Check::ok("ok 2"));
     checks.push(Check::warning("warning 2"));
     checks.push(Check::error("error 2"));
-    let file_info = FileInfo {
-        path_buf: PathBuf::from("/unit/test"),
-        checks,
-    };
+    let file_info = FileInfo::new(PathBuf::from("/unit/test"), checks);
     assert_eq!(format!("{}", file_info),
                "/unit/test
 \t 🔥 error 1
