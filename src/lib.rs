@@ -1,6 +1,7 @@
-use std::{io, fs, path, fmt};
-use std::io::BufRead;
-use std::os::unix::fs::PermissionsExt;
+extern crate filesystem;
+use filesystem::FileSystem;
+use filesystem::UnixFileSystem;
+use std::{io, path, fmt};
 use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
@@ -78,107 +79,28 @@ impl fmt::Display for FileInfo {
             output.push_str(&check.message);
             output.push('\n');
         }
-        write!(out, "{}\n{}\n", self.path_buf.to_str().unwrap(), output)
+        write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
     }
 }
 
-pub fn scan(path: &Path) -> io::Result<FileInfo> {
+pub fn scan2<F>(fs: &F, path: &Path) -> io::Result<FileInfo>
+    where F: FileSystem + UnixFileSystem
+{
     let mut checks: Vec<Check> = vec![];
-    let metadata = fs::metadata(path);
-    match metadata {
-        Ok(metadata) => {
-            checks.push(Check::ok("got metadata"));
-            if metadata.is_dir() {
-                checks.push(Check::ok("is a directory"));
-            }
-            if metadata.is_file() {
-                checks.push(Check::ok("is a file"));
-                match metadata.len() {
-                    0 => {
-                        checks.push(Check::warning("is empty"));
-                    },
-                    1...4096 => {
-                        checks.push(Check::ok("reasonable size"));
-                    },
-                    _ => {
-                        checks.push(Check::warning("too big to be interesting"));
-                    },
-                }
-                let mode = metadata.permissions().mode();
-                let can_read = mode & 0o500 != 0;
-                let can_write = mode & 0o050 != 0;
-                println!("DEBUG3 {:?}, {:?}", mode, can_write);
-            }
+    if fs.is_dir(&path) {
+        checks.push(Check::ok("is a directory"));
 
-        },
-        Err(error) => {
-            match error.kind() {
-                io::ErrorKind::NotFound => {
-                    checks.push(Check::error("not found"));
-
-                },
-                _ => {
-                    checks.push(Check::error(&error.to_string()));
-                },
-            }
+    }
+    if fs.is_file(&path) {
+        checks.push(Check::ok("is a file"));
+        let mode = fs.mode(path).unwrap();
+        let can_read = mode & 0o500 != 0;
+        if !can_read {
+            checks.push(Check::error("missing read permission"));
         }
     }
-    // if !path.exists() {
-    //     checks.push(Check::error("Not found"));
-    //     return Ok(FileInfo {
-    //                   path_buf: path.to_path_buf(),
-    //                   checks,
-    //               });
-    // }
-    // if path.is_dir() {
-    //     checks.push(Check::ok("is a directory"));
-    //     // for entry in fs::read_dir(path)? {
-    //     //     let entry = entry?;
-    //     //     let path = entry.path();
-    //     //     if path.is_dir() {
-    //     //         visit_dirs(&path, cb)?;
-    //     //     } else {
-    //     //         cb(&entry);
-    //     //     }
-    //     // }
-    // }
-    // if path.is_file() {
-    //     checks.push(Check::ok("is a file"));
-    //     match fs::File::open(path) {
-    //         Ok(file) => {
-    //             let reader = io::BufReader::new(&file);
-    //             let line_count = reader.lines().count();
-    //             checks.push(Check::ok(&format!("{} lines", line_count)));
-    //             let reader = io::BufReader::new(&file);
-    //             let first = reader.lines().nth(0);
-    //             println!("DEBUG1 {:?}", first);
-    //             match first {
-    //                 Some(line) => {
-    //                     checks.push(Check::ok("has first line"));
-    //                 }
-    //                 _ => (),
-    //             }
-    //             // .map(|l| { checks.push(Check::ok("has first line")); });
-    //             let reader = io::BufReader::new(&file);
-    //             let last = reader.lines().last();
-    //             match last {
-    //                 Some(line) => {
-    //                     checks.push(Check::ok("has last line"));
-    //                 }
-    //                 _ => (),
-    //             }
-    //             // .map(|l| { checks.push(Check::ok("has last line")); });
-    //
-    //         }
-    //         Err(error) => {
-    //             checks.push(Check::error("Error opening"));
-    //         }
-    //     }
-    // }
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
-    Ok(FileInfo {
-           path_buf: path_buf,
-           checks,
-       })
+
+    Ok(FileInfo { path_buf, checks })
 }
