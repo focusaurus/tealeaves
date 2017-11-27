@@ -120,6 +120,12 @@ pub fn scan<P: Permissions + PermissionsExt,
         if !can_read {
             checks.push(Check::error("missing read permission"));
         }
+        if meta.len() < 50 {
+            checks.push(Check::error("filesize too low"));
+        }
+        if meta.len() > 4096 {
+            checks.push(Check::error("filesize too high"));
+        }
 
     }
     let mut path_buf = PathBuf::new();

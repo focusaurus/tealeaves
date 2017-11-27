@@ -56,3 +56,16 @@ fn readable_file_gets_no_error() {
 
     }
 }
+
+#[test]
+fn small_file_gets_error() {
+    let fs = memfs1();
+    let mut small = fs.create_file("/tmp/small").unwrap();
+    small.write(&[1, 2, 3, 4]);
+    let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
+    assert!(file_info
+                .checks
+                .iter()
+                .any(|c| format!("{}", c) == "🔥 filesize too low"));
+
+}
