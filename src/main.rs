@@ -1,9 +1,8 @@
 #[macro_use]
 extern crate clap;
-extern crate tealeaves;
 extern crate rsfs;
+extern crate tealeaves;
 use clap::{Arg, App};
-use std::path::Path;
 
 fn main() {
     let matches = App::new("tealeaves")
@@ -18,7 +17,7 @@ fn main() {
     for info in matches
             .values_of("paths")
             .unwrap()
-            .map(|p| tealeaves::scan(&fs, &Path::new(&p))) {
+            .map(|p| tealeaves::scan(&fs, &p)) {
         println!("{}", info.unwrap());
     }
 }
