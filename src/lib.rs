@@ -98,8 +98,8 @@ impl fmt::Display for FileInfo {
 }
 
 pub fn scan<P: Permissions + PermissionsExt,
-         M: Metadata<Permissions = P>,
-         F: GenFS<Permissions = P, Metadata = M>>
+            M: Metadata<Permissions = P>,
+            F: GenFS<Permissions = P, Metadata = M>>
     (fs: &F,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
