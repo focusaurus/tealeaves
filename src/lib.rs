@@ -1,94 +1,24 @@
+// use std::io::{Write};
 extern crate rsfs;
+mod check;
+mod level;
+pub use check::Check;
+pub use level::Level;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
 use std::{io, path, fmt};
-// use std::io::{Write};
 use std::path::{PathBuf, Path};
-mod level;
-use level::Level;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub enum Check2 {
-    Empty(Level, String),
-    Unreadable(Level, String),
-    TooSmall(Level, String),
-    TooBig(Level, String),
-}
-
-impl fmt::Display for Check2 {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Check2::Empty(ref level, ref message) |
-            &Check2::Unreadable(ref level, ref message) |
-            &Check2::TooSmall(ref level, ref message) |
-            &Check2::TooBig(ref level, ref message) => write!(out, "{} {}", level, message),
-        }
-    }
-}
-
-/*
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub struct Check {
-    level: Level,
-    message: String,
-}
-
-impl fmt::Display for Check {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        let mut output = String::new();
-        output.push_str(match self.level {
-                            Level::Error => "🔥",
-                            Level::Warning => "⚠️",
-                            Level::Ok => "✓",
-                        });
-        output.push_str(" ");
-        output.push_str(&self.message);
-        write!(out, "{}", output)
-    }
-}
-
-impl Check {
-    pub fn error(message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-            level: Level::Error,
-        }
-    }
-    pub fn warning(message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-            level: Level::Warning,
-        }
-    }
-    pub fn ok(message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-            level: Level::Ok,
-        }
-    }
-}
-
-#[test]
-fn test_check_order() {
-    let error = Check::error("");
-    let warning = Check::warning("");
-    let ok = Check::ok("");
-    assert!(error < warning);
-    assert!(warning < ok);
-    assert!(ok > warning);
-    assert!(ok > error);
-}
-*/
 
 #[derive(Debug)]
 pub struct FileInfo {
     pub path_buf: path::PathBuf,
-    pub checks: Vec<Check2>,
+    pub checks: Vec<Check>,
 }
 
 impl FileInfo {
-    pub fn new(path_buf: PathBuf, checks: Vec<Check2>) -> Self {
+    pub fn new(path_buf: PathBuf, checks: Vec<Check>) -> Self {
         FileInfo { path_buf, checks }
     }
 }
@@ -111,28 +41,28 @@ pub fn scan<P: Permissions + PermissionsExt,
     (fs: &F,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
-    let mut checks: Vec<Check2> = vec![];
+    let mut checks: Vec<Check> = vec![];
     let meta = fs.metadata(path).unwrap();
     // if meta.is_dir() {
-    //     checks.push(Check2::ok("is a directory"));
+    //     checks.push(Check::ok("is a directory"));
     //
     // }
     if meta.is_file() {
         // checks.push(Check::ok("is a file"));
         if meta.is_empty() {
-            checks.push(Check2::Empty(Level::Error, "is empty".to_string()));
+            checks.push(Check::Empty(Level::Error, "is empty".to_string()));
         }
         let mode = meta.permissions().mode();
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
         let can_read = mode & 0o444 != 0;
         if !can_read {
-            checks.push(Check2::Unreadable(Level::Error, "missing read permission".to_string()));
+            checks.push(Check::Unreadable(Level::Error, "missing read permission".to_string()));
         }
         if meta.len() < 50 {
-            checks.push(Check2::TooSmall(Level::Error, "filesize too low".to_string()));
+            checks.push(Check::TooSmall(Level::Error, "filesize too low".to_string()));
         }
         if meta.len() > 4096 {
-            checks.push(Check2::TooBig(Level::Error, "filesize too high".to_string()));
+            checks.push(Check::TooBig(Level::Error, "filesize too high".to_string()));
         }
 
     }
