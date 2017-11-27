@@ -1,9 +1,9 @@
 extern crate rsfs;
-use rsfs::{GenFS, FileType, Metadata};
+use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
-use std::{io, path, fmt, ops};
-use std::io::{Read, Write};
+use std::{io, path, fmt};
+// use std::io::{Write};
 use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
@@ -115,10 +115,10 @@ pub fn scan<P: Permissions + PermissionsExt,
             checks.push(Check::error("is empty"));
         }
         let mode = meta.permissions().mode();
-        let can_read = mode & 0o400 != 0;
-        println!("HEY MODE {:o} {:o}, {}", mode, mode & 0o400, can_read);
+        // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
+        let can_read = mode & 0o444 != 0;
         if !can_read {
-            checks.push(Check::error("missing owner read permission"));
+            checks.push(Check::error("missing read permission"));
         }
 
     }
