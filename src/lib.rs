@@ -13,12 +13,31 @@ pub enum Level {
     Ok,
 }
 
+impl fmt::Display for Level {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        write!(out,
+               "{}",
+               match self {
+                   &Level::Error => "🔥",
+                   &Level::Warning => "⚠️",
+                   &Level::Ok => "✓",
+               })
+    }
+}
+
 #[test]
 fn test_message_kind_order() {
     assert!(Level::Error < Level::Warning);
     assert!(Level::Warning < Level::Ok);
     assert!(Level::Error < Level::Ok);
     assert!(Level::Ok > Level::Warning);
+}
+
+#[test]
+fn test_level_display() {
+    assert_eq!(format!("{}", Level::Error), "🔥");
+    assert_eq!(format!("{}", Level::Warning), "⚠️");
+    assert_eq!(format!("{}", Level::Ok), "✓");
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
