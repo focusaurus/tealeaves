@@ -3,10 +3,12 @@ extern crate tealeaves;
 use rsfs::GenFS;
 use rsfs::unix_ext::PermissionsExt;
 use rsfs::mem::unix::Permissions;
-use rsfs::Metadata;
-use rsfs::unix_ext::FileExt;
+// use rsfs::Metadata;
+// use rsfs::unix_ext::FileExt;
 use rsfs::mem::unix::FS;
 use std::io::Write;
+// use tealeaves::Check;
+use tealeaves::check::Kind;
 
 fn memfs1() -> FS {
     let fs = rsfs::mem::unix::FS::new();
@@ -22,7 +24,10 @@ fn empty_file_gets_error() {
     assert!(file_info
                 .checks
                 .iter()
-                .any(|c| format!("{}", c) == "🔥 is empty"));
+                .any(|c| match c.kind {
+                         Kind::Empty => true,
+                         _ => false,
+                     }));
 }
 
 #[test]
@@ -36,7 +41,10 @@ fn unreadable_file_gets_error() {
         assert!(file_info
                     .checks
                     .iter()
-                    .any(|c| format!("{}", c) == "🔥 missing read permission"));
+                    .any(|c| match c.kind {
+                             Kind::Unreadable => true,
+                             _ => false,
+                         }));
 
     }
 }
@@ -49,10 +57,13 @@ fn readable_file_gets_no_error() {
     for &mode in [0o004, 0o004, 0o040, 0o400, 0o444].iter() {
         fs.set_permissions("/tmp/readable", Permissions::from_mode(mode));
         let file_info = tealeaves::scan(&fs, &"/tmp/readable").unwrap();
-        assert!(file_info
-                    .checks
-                    .iter()
-                    .all(|c| format!("{}", c) != "🔥 missing read permission"));
+        assert!(!file_info
+                     .checks
+                     .iter()
+                     .any(|c| match c.kind {
+                              Kind::Unreadable => true,
+                              _ => false,
+                          }));
 
     }
 }
@@ -60,27 +71,33 @@ fn readable_file_gets_no_error() {
 #[test]
 fn low_size_gets_error() {
     let fs = memfs1();
-    let mut low = fs.create_file("/tmp/low").unwrap();
-    low.write(&[1, 2, 3, 4]);
-    let file_info = tealeaves::scan(&fs, &"/tmp/low").unwrap();
+    let mut small = fs.create_file("/tmp/small").unwrap();
+    small.write(&[1, 2, 3, 4]);
+    let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
     assert!(file_info
                 .checks
                 .iter()
-                .any(|c| format!("{}", c) == "🔥 filesize too low"));
+                .any(|c| match c.kind {
+                         Kind::TooSmall => true,
+                         _ => false,
+                     }));
 
 }
 
 #[test]
 fn high_size_gets_error() {
     let fs = memfs1();
-    let mut high = fs.create_file("/tmp/high").unwrap();
+    let mut big = fs.create_file("/tmp/big").unwrap();
     for x in 0..1024 {
-        high.write(&[1, 2, 3, 4, 5, 6, 7]);
+        big.write(&[1, 2, 3, 4, 5, 6, 7]);
     }
-    let file_info = tealeaves::scan(&fs, &"/tmp/high").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
     assert!(file_info
                 .checks
                 .iter()
-                .any(|c| format!("{}", c) == "🔥 filesize too high"));
+                .any(|c| match c.kind {
+                         Kind::TooBig => true,
+                         _ => false,
+                     }));
 
 }

@@ -1,7 +1,7 @@
 // use std::io::{Write};
 extern crate rsfs;
-mod check;
 mod level;
+pub mod check;
 pub use check::Check;
 pub use level::Level;
 use rsfs::{GenFS, Metadata};
@@ -9,7 +9,6 @@ use rsfs::*;
 use rsfs::unix_ext::*;
 use std::{io, path, fmt};
 use std::path::{PathBuf, Path};
-
 
 #[derive(Debug)]
 pub struct FileInfo {
@@ -50,19 +49,19 @@ pub fn scan<P: Permissions + PermissionsExt,
     if meta.is_file() {
         // checks.push(Check::ok("is a file"));
         if meta.is_empty() {
-            checks.push(Check::Empty(Level::Error, "is empty".to_string()));
+            checks.push(Check::empty());
         }
         let mode = meta.permissions().mode();
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
         let can_read = mode & 0o444 != 0;
         if !can_read {
-            checks.push(Check::Unreadable(Level::Error, "missing read permission".to_string()));
+            checks.push(Check::unreadable());
         }
         if meta.len() < 50 {
-            checks.push(Check::TooSmall(Level::Error, "filesize too low".to_string()));
+            checks.push(Check::too_small());
         }
         if meta.len() > 4096 {
-            checks.push(Check::TooBig(Level::Error, "filesize too high".to_string()));
+            checks.push(Check::too_big());
         }
 
     }
