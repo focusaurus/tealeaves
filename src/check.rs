@@ -1,31 +1,6 @@
 use level::Level;
 use std::fmt;
 
-// #[derive(PartialEq, Eq, Ord, Debug, Clone)]
-// pub enum Check {
-//     Empty(Level, String),
-//     Unreadable(Level, String),
-//     TooSmall(Level, String),
-//     TooBig(Level, String),
-// }
-//
-// impl fmt::Display for Check {
-//     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             &Check::Empty(ref level, ref message) |
-//             &Check::Unreadable(ref level, ref message) |
-//             &Check::TooSmall(ref level, ref message) |
-//             &Check::TooBig(ref level, ref message) => write!(out, "{} {}", level, message),
-//         }
-//     }
-// }
-//
-// impl cmp::PartialOrd for Check {
-//     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-//         self.0.cmp(other.0)
-//     }
-// }
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum Kind {
     Empty,

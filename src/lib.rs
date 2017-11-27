@@ -1,4 +1,3 @@
-// use std::io::{Write};
 extern crate rsfs;
 mod level;
 pub mod check;
