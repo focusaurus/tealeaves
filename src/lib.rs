@@ -131,7 +131,7 @@ pub fn scan3<P: Permissions + PermissionsExt,
          M: Metadata<Permissions = P>,
          F: GenFS<Permissions = P, Metadata = M>>
     (fs: &F,
-     path: &Path)
+     path: &AsRef<Path>)
      -> io::Result<FileInfo> {
     let mut checks: Vec<Check> = vec![];
     let meta = fs.metadata(path).unwrap();

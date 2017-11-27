@@ -1,16 +1,15 @@
-extern crate filesystem;
+extern crate rsfs;
 extern crate tealeaves;
-use filesystem::FileSystem;
 use std::path::Path;
+use rsfs::GenFS;
 
 #[test]
 fn empty_file_gets_error() {
-    let fs = filesystem::FakeFileSystem::new();
-    let empty = Path::new("empty");
-    fs.write_file(empty, []).unwrap();
-    let data = fs.read_file_to_string(empty).unwrap();
-    let file_info = tealeaves::scan2(&fs, empty).unwrap();
-    // assert_eq!(data, "");
+    let fs = rsfs::mem::unix::FS::new();
+    fs.create_dir_all("/tmp").unwrap();
+    let empty = fs.create_file("/tmp/empty");
+
+    let file_info = tealeaves::scan3(&fs, &"/tmp/empty").unwrap();
     assert!(file_info
                 .checks
                 .iter()

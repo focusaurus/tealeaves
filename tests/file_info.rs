@@ -1,7 +1,7 @@
-extern crate filesystem;
+extern crate rsfs;
 extern crate tealeaves;
+use rsfs::GenFS;
 use std::path::PathBuf;
-use filesystem::FileSystem;
 use tealeaves::{Check, FileInfo};
 
 #[test]
