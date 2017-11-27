@@ -111,14 +111,14 @@ pub fn scan<P: Permissions + PermissionsExt,
     }
     if meta.is_file() {
         checks.push(Check::ok("is a file"));
-        let permissions = meta.permissions();
-        let mode = permissions.mode();
-        let can_read = mode & 0o500 != 0;
-        if !can_read {
-            checks.push(Check::error("missing read permission"));
-        }
         if meta.is_empty() {
             checks.push(Check::error("is empty"));
+        }
+        let mode = meta.permissions().mode();
+        let can_read = mode & 0o400 != 0;
+        println!("HEY MODE {:o} {:o}, {}", mode, mode & 0o400, can_read);
+        if !can_read {
+            checks.push(Check::error("missing owner read permission"));
         }
 
     }
