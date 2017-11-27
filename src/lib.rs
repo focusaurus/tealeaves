@@ -7,7 +7,7 @@ use std::{io, path, fmt};
 use std::path::{PathBuf, Path};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub enum MessageKind {
+pub enum Level {
     Error,
     Warning,
     Ok,
@@ -15,25 +15,25 @@ pub enum MessageKind {
 
 #[test]
 fn test_message_kind_order() {
-    assert!(MessageKind::Error < MessageKind::Warning);
-    assert!(MessageKind::Warning < MessageKind::Ok);
-    assert!(MessageKind::Error < MessageKind::Ok);
-    assert!(MessageKind::Ok > MessageKind::Warning);
+    assert!(Level::Error < Level::Warning);
+    assert!(Level::Warning < Level::Ok);
+    assert!(Level::Error < Level::Ok);
+    assert!(Level::Ok > Level::Warning);
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub struct Check {
-    kind: MessageKind,
+    level: Level,
     message: String,
 }
 
 impl fmt::Display for Check {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
-        output.push_str(match self.kind {
-                            MessageKind::Error => "🔥",
-                            MessageKind::Warning => "⚠️",
-                            MessageKind::Ok => "✓",
+        output.push_str(match self.level {
+                            Level::Error => "🔥",
+                            Level::Warning => "⚠️",
+                            Level::Ok => "✓",
                         });
         output.push_str(" ");
         output.push_str(&self.message);
@@ -45,19 +45,19 @@ impl Check {
     pub fn error(message: &str) -> Self {
         Self {
             message: message.to_string(),
-            kind: MessageKind::Error,
+            level: Level::Error,
         }
     }
     pub fn warning(message: &str) -> Self {
         Self {
             message: message.to_string(),
-            kind: MessageKind::Warning,
+            level: Level::Warning,
         }
     }
     pub fn ok(message: &str) -> Self {
         Self {
             message: message.to_string(),
-            kind: MessageKind::Ok,
+            level: Level::Ok,
         }
     }
 }
