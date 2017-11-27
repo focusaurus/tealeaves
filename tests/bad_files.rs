@@ -9,13 +9,9 @@ fn empty_file_gets_error() {
     fs.create_dir_all("/tmp").unwrap();
     let empty = fs.create_file("/tmp/empty");
 
-    let file_info = tealeaves::scan3(&fs, &"/tmp/empty").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/empty").unwrap();
     assert!(file_info
                 .checks
                 .iter()
-                .any(|c| {
-                         // format!("{}", c) == "🔥 is empty";
-                         println!("{}", c);
-                         return true;
-                     }));
+                .any(|c| format!("{}", c) == "🔥 is empty"));
 }

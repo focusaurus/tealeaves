@@ -1,6 +1,3 @@
-// extern crate filesystem;
-// use filesystem::FileSystem;
-// use filesystem::UnixFileSystem;
 extern crate rsfs;
 use rsfs::{GenFS, FileType, Metadata};
 use rsfs::*;
@@ -99,35 +96,8 @@ impl fmt::Display for FileInfo {
         write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
     }
 }
-/*
-pub fn scan2<F>(fs: &F, path: &Path) -> io::Result<FileInfo>
-    where F: FileSystem + UnixFileSystem
-{
-    let mut checks: Vec<Check> = vec![];
-    if fs.is_dir(&path) {
-        checks.push(Check::ok("is a directory"));
 
-    }
-    if fs.is_file(&path) {
-        checks.push(Check::ok("is a file"));
-        let mode = fs.mode(path).unwrap();
-        let can_read = mode & 0o500 != 0;
-        if !can_read {
-            checks.push(Check::error("missing read permission"));
-        }
-    }
-    let mut path_buf = PathBuf::new();
-    path_buf.push(path);
-
-    Ok(FileInfo { path_buf, checks })
-}
-*/
-// pub fn scan3<F>(fs: &F, path: &Path) -> io::Result<FileInfo>
-//     where F: rsfs::unix_ext::GenFSExt
-//     + rsfs::GenFS
-//     + rsfs::unix_ext::PermissionsExt
-//     + rsfs::unix_ext::FileExt
-pub fn scan3<P: Permissions + PermissionsExt,
+pub fn scan<P: Permissions + PermissionsExt,
          M: Metadata<Permissions = P>,
          F: GenFS<Permissions = P, Metadata = M>>
     (fs: &F,
