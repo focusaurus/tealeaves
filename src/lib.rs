@@ -5,41 +5,29 @@ use rsfs::unix_ext::*;
 use std::{io, path, fmt};
 // use std::io::{Write};
 use std::path::{PathBuf, Path};
+mod level;
+use level::Level;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub enum Level {
-    Error,
-    Warning,
-    Ok,
+pub enum Check2 {
+    Empty(Level, String),
+    Unreadable(Level, String),
+    TooSmall(Level, String),
+    TooBig(Level, String),
 }
 
-impl fmt::Display for Level {
+impl fmt::Display for Check2 {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        write!(out,
-               "{}",
-               match self {
-                   &Level::Error => "🔥",
-                   &Level::Warning => "⚠️",
-                   &Level::Ok => "✓",
-               })
+        match self {
+            &Check2::Empty(ref level, ref message) |
+            &Check2::Unreadable(ref level, ref message) |
+            &Check2::TooSmall(ref level, ref message) |
+            &Check2::TooBig(ref level, ref message) => write!(out, "{} {}", level, message),
+        }
     }
 }
 
-#[test]
-fn test_message_kind_order() {
-    assert!(Level::Error < Level::Warning);
-    assert!(Level::Warning < Level::Ok);
-    assert!(Level::Error < Level::Ok);
-    assert!(Level::Ok > Level::Warning);
-}
-
-#[test]
-fn test_level_display() {
-    assert_eq!(format!("{}", Level::Error), "🔥");
-    assert_eq!(format!("{}", Level::Warning), "⚠️");
-    assert_eq!(format!("{}", Level::Ok), "✓");
-}
-
+/*
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub struct Check {
     level: Level,
@@ -91,15 +79,16 @@ fn test_check_order() {
     assert!(ok > warning);
     assert!(ok > error);
 }
+*/
 
 #[derive(Debug)]
 pub struct FileInfo {
     pub path_buf: path::PathBuf,
-    pub checks: Vec<Check>,
+    pub checks: Vec<Check2>,
 }
 
 impl FileInfo {
-    pub fn new(path_buf: PathBuf, checks: Vec<Check>) -> Self {
+    pub fn new(path_buf: PathBuf, checks: Vec<Check2>) -> Self {
         FileInfo { path_buf, checks }
     }
 }
@@ -122,28 +111,28 @@ pub fn scan<P: Permissions + PermissionsExt,
     (fs: &F,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
-    let mut checks: Vec<Check> = vec![];
+    let mut checks: Vec<Check2> = vec![];
     let meta = fs.metadata(path).unwrap();
-    if meta.is_dir() {
-        checks.push(Check::ok("is a directory"));
-
-    }
+    // if meta.is_dir() {
+    //     checks.push(Check2::ok("is a directory"));
+    //
+    // }
     if meta.is_file() {
-        checks.push(Check::ok("is a file"));
+        // checks.push(Check::ok("is a file"));
         if meta.is_empty() {
-            checks.push(Check::error("is empty"));
+            checks.push(Check2::Empty(Level::Error, "is empty".to_string()));
         }
         let mode = meta.permissions().mode();
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
         let can_read = mode & 0o444 != 0;
         if !can_read {
-            checks.push(Check::error("missing read permission"));
+            checks.push(Check2::Unreadable(Level::Error, "missing read permission".to_string()));
         }
         if meta.len() < 50 {
-            checks.push(Check::error("filesize too low"));
+            checks.push(Check2::TooSmall(Level::Error, "filesize too low".to_string()));
         }
         if meta.len() > 4096 {
-            checks.push(Check::error("filesize too high"));
+            checks.push(Check2::TooBig(Level::Error, "filesize too high".to_string()));
         }
 
     }
