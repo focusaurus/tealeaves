@@ -81,6 +81,26 @@ fn not_pem_gets_detected() {
 }
 
 #[test]
+fn pem_gets_detected() {
+    let fs = memfs();
+    let mut pem = fs.create_file("/tmp/pem").unwrap();
+    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACA2WS+xYVACuTmyxQDByFfD5tRfZFnxq03l04+tYPxExgAAAKj+L4az/i+G
+swAAAAtzc2gtZWQyNTUxOQAAACA2WS+xYVACuTmyxQDByFfD5tRfZFnxq03l04+tYPxExg
+AAAEBIhgNOlzPnH3cAul5S0VSrnirdVr6TVDL2gVDXIEu6FTZZL7FhUAK5ObLFAMHIV8Pm
+1F9kWfGrTeXTj61g/ETGAAAAH1RlYWxldmVzIHRlc3QgRUQyNTUxOSBTU0ggS2V5IDEBAg
+MEBQY=
+-----END OPENSSH PRIVATE KEY-----
+");
+    let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
+    assert!(file_info
+                .checks
+                .iter()
+                .any(|c| c.kind == Kind::PEM));
+}
+
+#[test]
 fn high_size_gets_error() {
     let fs = memfs();
     let mut big = fs.create_file("/tmp/big").unwrap();
