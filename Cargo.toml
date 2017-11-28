@@ -6,3 +6,4 @@ authors = ["Peter Lyons <pete@peterlyons.com>"]
 [dependencies]
 clap = "2.27.1"
 rsfs = "0.4.1"
+pem = "0.4"

@@ -3,10 +3,13 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum Kind {
+    Directory,
     Empty,
     Unreadable,
     TooSmall,
     TooBig,
+    PEM,
+    NotPEM,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
@@ -23,6 +26,30 @@ impl fmt::Display for Check {
 }
 
 impl Check {
+    pub fn directory() -> Self {
+        Self {
+            level: Level::Ok,
+            kind: Kind::Directory,
+            message: "is a directory".to_string(),
+        }
+    }
+
+    pub fn pem() -> Self {
+        Self {
+            level: Level::Ok,
+            kind: Kind::PEM,
+            message: "is PEM format".to_string(),
+        }
+    }
+
+    pub fn not_pem() -> Self {
+        Self {
+            level: Level::Ok,
+            kind: Kind::NotPEM,
+            message: "is not PEM format".to_string(),
+        }
+    }
+
     pub fn empty() -> Self {
         Self {
             level: Level::Error,

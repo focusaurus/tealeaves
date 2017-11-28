@@ -1,4 +1,6 @@
 extern crate rsfs;
+extern crate pem;
+
 mod level;
 pub mod check;
 pub use check::Check;
@@ -8,6 +10,7 @@ use rsfs::*;
 use rsfs::unix_ext::*;
 use std::{io, path, fmt};
 use std::path::{PathBuf, Path};
+use std::io::Read;
 
 #[derive(Debug)]
 pub struct FileInfo {
@@ -40,11 +43,10 @@ pub fn scan<P: Permissions + PermissionsExt,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
     let mut checks: Vec<Check> = vec![];
-    let meta = fs.metadata(path).unwrap();
-    // if meta.is_dir() {
-    //     checks.push(Check::ok("is a directory"));
-    //
-    // }
+    let meta = fs.metadata(path)?;
+    if meta.is_dir() {
+        checks.push(Check::directory());
+    }
     if meta.is_file() {
         // checks.push(Check::ok("is a file"));
         if meta.is_empty() {
@@ -56,13 +58,20 @@ pub fn scan<P: Permissions + PermissionsExt,
         if !can_read {
             checks.push(Check::unreadable());
         }
-        if meta.len() < 50 {
-            checks.push(Check::too_small());
+        match meta.len() {
+            0...50 => checks.push(Check::too_small()),
+            51...4096 => {
+                let mut content = String::new();
+                let mut file = fs.open_file(path)?;
+                file.read_to_string(&mut content)?;
+                let parsed_result = pem::parse(content);
+                match parsed_result {
+                    Ok(pem) => checks.push(Check::pem()),
+                    Err(error) => checks.push(Check::not_pem()),
+                }
+            }
+            _ => checks.push(Check::too_big()),
         }
-        if meta.len() > 4096 {
-            checks.push(Check::too_big());
-        }
-
     }
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
