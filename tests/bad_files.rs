@@ -21,10 +21,7 @@ fn empty_file_gets_error() {
     assert!(file_info
                 .checks
                 .iter()
-                .any(|c| match c.kind {
-                         Kind::Empty => true,
-                         _ => false,
-                     }));
+                .any(|c| c.kind == Kind::Empty));
 }
 
 #[test]
@@ -38,10 +35,7 @@ fn unreadable_file_gets_error() {
         assert!(file_info
                     .checks
                     .iter()
-                    .any(|c| match c.kind {
-                             Kind::Unreadable => true,
-                             _ => false,
-                         }));
+                    .any(|c| c.kind == Kind::Unreadable));
 
     }
 }
@@ -57,11 +51,7 @@ fn readable_file_gets_no_error() {
         assert!(!file_info
                      .checks
                      .iter()
-                     .any(|c| match c.kind {
-                              Kind::Unreadable => true,
-                              _ => false,
-                          }));
-
+                     .any(|c| c.kind == Kind::Unreadable));
     }
 }
 
@@ -74,11 +64,20 @@ fn low_size_gets_error() {
     assert!(file_info
                 .checks
                 .iter()
-                .any(|c| match c.kind {
-                         Kind::TooSmall => true,
-                         _ => false,
-                     }));
+                .any(|c| c.kind == Kind::TooSmall));
 
+}
+
+#[test]
+fn not_pem_gets_detected() {
+    let fs = memfs();
+    let mut not_pem = fs.create_file("/tmp/not_pem").unwrap();
+    not_pem.write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe");
+    let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
+    assert!(file_info
+                .checks
+                .iter()
+                .any(|c| c.kind == Kind::NotPEM));
 }
 
 #[test]
