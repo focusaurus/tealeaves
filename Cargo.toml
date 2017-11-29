@@ -7,3 +7,5 @@ authors = ["Peter Lyons <pete@peterlyons.com>"]
 clap = "2.27.1"
 rsfs = "0.4.1"
 pem = "0.4"
+base64 = "0.6.0"
+yasna = "0.1.3"
