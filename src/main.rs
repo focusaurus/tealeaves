@@ -17,7 +17,7 @@ fn main() {
     for info in matches
             .values_of("paths")
             .unwrap()
-            .map(|p| tealeaves::scan(&fs, &p)) {
+            .map(|p| tealeaves::scan4(&fs, &p)) {
         println!("{}", info.unwrap());
     }
 }
