@@ -156,10 +156,14 @@ pub fn scan4<P: Permissions + PermissionsExt,
         }
         let parsed_result = pem::parse(content);
         match parsed_result {
-            Ok(_) => {
+            Ok(pem) => {
                 is_pem = true;
-                // todo actually test for this
-                is_private_key = true;
+                let prefix = b"openssh-key-v1";
+                if pem.contents.len() >= prefix.len() {
+                    is_private_key = prefix == &pem.contents[0..prefix.len()];
+                    // let found = String::from_utf8(pem.contents[0..magic.len()].to_vec()).unwrap();
+                    // is_private_key = found == magic;
+                }
             }
             _ => (),
         }
