@@ -10,6 +10,8 @@ pub enum Kind {
     TooBig,
     PEM,
     NotPEM,
+    PublicKeyEd25519,
+    PublicKeyRsa,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
@@ -79,6 +81,22 @@ impl Check {
             level: Level::Warning,
             kind: Kind::TooBig,
             message: "file size too big".to_string(),
+        }
+    }
+
+    pub fn public_key_ed25519() -> Self {
+        Self {
+            level: Level::Ok,
+            kind: Kind::PublicKeyEd25519,
+            message: "ed25519 public key".to_string(),
+        }
+    }
+
+    pub fn public_key_rsa() -> Self {
+        Self {
+            level: Level::Ok,
+            kind: Kind::PublicKeyRsa,
+            message: "rsa public key".to_string(),
         }
     }
 }

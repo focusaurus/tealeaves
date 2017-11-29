@@ -18,10 +18,7 @@ fn empty_file_gets_error() {
     let fs = memfs();
     let empty = fs.create_file("/tmp/empty");
     let file_info = tealeaves::scan(&fs, &"/tmp/empty").unwrap();
-    assert!(file_info
-                .checks
-                .iter()
-                .any(|c| c.kind == Kind::Empty));
+    assert!(file_info.checks.iter().any(|c| c.kind == Kind::Empty));
 }
 
 #[test]
@@ -74,10 +71,7 @@ fn not_pem_gets_detected() {
     let mut not_pem = fs.create_file("/tmp/not_pem").unwrap();
     not_pem.write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe");
     let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
-    assert!(file_info
-                .checks
-                .iter()
-                .any(|c| c.kind == Kind::NotPEM));
+    assert!(file_info.checks.iter().any(|c| c.kind == Kind::NotPEM));
 }
 
 #[test]
@@ -94,10 +88,7 @@ MEBQY=
 -----END OPENSSH PRIVATE KEY-----
 ");
     let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
-    assert!(file_info
-                .checks
-                .iter()
-                .any(|c| c.kind == Kind::PEM));
+    assert!(file_info.checks.iter().any(|c| c.kind == Kind::PEM));
 }
 
 #[test]

@@ -48,29 +48,35 @@ pub fn scan<P: Permissions + PermissionsExt,
         checks.push(Check::directory());
     }
     if meta.is_file() {
-        // checks.push(Check::ok("is a file"));
-        if meta.is_empty() {
-            checks.push(Check::empty());
-        }
         let mode = meta.permissions().mode();
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
         let can_read = mode & 0o444 != 0;
-        if !can_read {
-            checks.push(Check::unreadable());
+        if meta.is_empty() {
+            checks.push(Check::empty());
         }
-        match meta.len() {
-            0...50 => checks.push(Check::too_small()),
-            51...4096 => {
-                let mut content = String::new();
-                let mut file = fs.open_file(path)?;
-                file.read_to_string(&mut content)?;
-                let parsed_result = pem::parse(content);
-                match parsed_result {
-                    Ok(pem) => checks.push(Check::pem()),
-                    Err(error) => checks.push(Check::not_pem()),
+        if can_read {
+            match meta.len() {
+                0...50 => checks.push(Check::too_small()),
+                51...4096 => {
+                    let mut content = String::new();
+                    let mut file = fs.open_file(path)?;
+                    file.read_to_string(&mut content)?;
+                    if content.starts_with("ssh-ed25519 ") {
+                        checks.push(Check::public_key_ed25519());
+                    }
+                    if content.starts_with("ssh-rsa ") {
+                        checks.push(Check::public_key_rsa());
+                    }
+                    let parsed_result = pem::parse(content);
+                    match parsed_result {
+                        Ok(_) => checks.push(Check::pem()),
+                        _ => checks.push(Check::not_pem()),
+                    }
                 }
+                _ => checks.push(Check::too_big()),
             }
-            _ => checks.push(Check::too_big()),
+        } else {
+            checks.push(Check::unreadable());
         }
     }
     let mut path_buf = PathBuf::new();
