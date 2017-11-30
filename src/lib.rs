@@ -118,15 +118,11 @@ pub fn scan4<P: Permissions + PermissionsExt,
     let mut is_private_key = false;
     let mut is_public_key = false;
     let mut is_readable = false;
-    let mut is_readable = false;
     let mut is_rsa = false;
     let mut is_size_large = false;
-    let mut is_size_large = false;
-    let mut is_size_medium = false;
     let mut is_size_medium = false;
     let mut is_size_small = false;
-    let mut is_size_small = false;
-    let mut is_ssh_key = false;
+    let is_ssh_key = false;
     if is_file {
         let mode = meta.permissions().mode();
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/

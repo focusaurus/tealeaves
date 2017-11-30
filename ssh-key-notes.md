@@ -36,3 +36,23 @@ OpenSSH supports the following key types
   - `mv dumpasn1 /usr/local/bin`
 - `grep -v '-' ./local/test_files/test-ssh-ed25519-1.privatekey | base64 -D > local/raw-der`
 - https://tools.ietf.org/html/rfc4253#section-6.6
+- byteorder crate
+```
+0000000 6f 70 65 6e 73 73 68 2d 6b 65 79 2d 76 31 00 00
+0000010 00 00 04 6e 6f 6e 65 00 00 00 04 6e 6f 6e 65 00
+
+14 bytes ascii "openssh-key-v1"
+1 null byte
+4 byte length prefix, 6 bytes string for 3 fields
+4 byte number of keys
+4 byte key string length
+N bytes key1...
+
+	byte[]	AUTH_MAGIC
+	string	ciphername
+	string	kdfname
+	string	kdfoptions
+	int	number of keys N
+	string	publickey1
+	string	publickey2
+- by_ref

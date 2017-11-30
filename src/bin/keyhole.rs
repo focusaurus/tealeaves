@@ -1,17 +1,26 @@
 extern crate base64;
-extern crate yasna;
+extern crate byteorder;
+use byteorder::{BigEndian, ReadBytesExt};
 use std::env;
 use std::fs;
 use std::io;
-use std::io::{BufRead,Read};
+use std::io::{BufRead, Read};
+use std::iter::Iterator;
+//
+// fn to_u32(bytes: &[u8]) -> u32 {
+//     let mut size = 0u32;
+//     for (index, &byte) in bytes.iter().enumerate() {
+//         size = size + byte as u32;
+//         if index < bytes.len() -1 {size = size << 8;}
+//     }
+//     size
+// }
 
-fn to_u32(bytes: &[u8]) -> u32 {
-    let mut size = 0u32;
-    for (index, &byte) in bytes.iter().enumerate() {
-        size = size + byte as u32;
-        if index < bytes.len() -1 {size = size << 8;}
-    }
-    size
+fn read_string<R: ReadBytesExt + Read>(reader: &mut R) -> String {
+    let len = reader.read_u32::<BigEndian>().unwrap();
+    let mut word = vec![0u8;len as usize];
+    reader.read_exact(&mut word.as_mut_slice()).unwrap();
+    String::from_utf8(word).unwrap()
 }
 
 fn keyhole() -> io::Result<()> {
@@ -28,25 +37,32 @@ fn keyhole() -> io::Result<()> {
         let bytes = base64::decode(&base64).unwrap();
         let prefix = b"openssh-key-v1";
         let starts_with_prefix = bytes.len() >= prefix.len() && prefix == &bytes[0..prefix.len()];
-        if  !starts_with_prefix {
+        if !starts_with_prefix {
             return Ok(());
         }
         println!("✓openssh-key-v1");
-        // Make a reader for everything after the prefix
-        let reader = io::BufReader::new(&bytes[prefix.len()..]);
+        // Make a reader for everything after the prefix plus the null byte
+        let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
+        let cipher_name = read_string(&mut reader);
+        println!("cipher: {}", cipher_name);
+        let kdfname = read_string(&mut reader);
+        println!("kdfname: {}", kdfname);
         // let reader = io::BufReader::new(&bytes[prefix.len()..]).bytes();
-        // // let mut string_len = [0u8;4];
         // let string_len: Vec<u8> = reader.take(4).map(|b|b.unwrap()).collect();
-        // let cipher_name: Vec<u8> = reader.take(cipher_name_len as usize).map(|b|b.unwrap()).collect();
 
+        // let mut string_len = [0u8;4];
+        // reader.by_ref().read_exact(&mut string_len);
+        // let cipher_name_len = to_u32(&payload[0..5]);
+        // let mut string_len = [0u8;4];
+        // let cipher_name: Vec<u8> = reader.take(cipher_name_len as usize).map(|b|b.unwrap()).collect();
+        //
         // reader.read_exact(&mut string_len);
-        let payload = &bytes[prefix.len()..];
-        let cipher_name_len = to_u32(&payload[0..5]);
-        let mut index = 0;
-        index = index + 5;
-        println!("cipher_name_len {}", cipher_name_len);
-        let cipher_name = String::from_utf8_lossy(&payload[index..(index + cipher_name_len as usize)]);
-        println!("cipher_name {}", cipher_name);
+        // let payload = &bytes[prefix.len()..];
+        // let mut index = 0;
+        // index = index + 5;
+        // println!("cipher_name_len {}", cipher_name_len);
+        // let cipher_name = String::from_utf8_lossy(&payload[index..(index + cipher_name_len as usize)]);
+        // println!("cipher_name {}", cipher_name);
         // let mut cipher_name = [
         // index = index + cipher_name_len;
 
@@ -70,9 +86,10 @@ fn keyhole() -> io::Result<()> {
 	string	publickey2
 */
 
-        for (index, word) in bytes.split(|&byte| byte == 0).filter(|byte|byte.len() > 0).enumerate() {
-            println!("{}: {} (len: {})", index, String::from_utf8_lossy(word), word.len());
-        }
+
+        // for (index, word) in bytes.split(|&byte| byte == 0).filter(|byte|byte.len() > 0).enumerate() {
+        //     println!("{}: {} (len: {})", index, String::from_utf8_lossy(word), word.len());
+        // }
         // println!("{:?}", bytes[23] == 0);
         // println!("{}", String::from_utf8_lossy(&bytes[0..15]));
         // let asn = yasna::parse_ber_general(&bytes, yasna::BERMode::Der, |reader| {
