@@ -1,4 +1,4 @@
-use std::{fmt,path};
+use std::{fmt, path};
 
 #[derive(Debug)]
 pub struct FileInfo {
@@ -47,44 +47,46 @@ impl fmt::Display for FileInfo {
         } else if !self.is_readable {
             output.push_str("\t🔥 missing read permission\n");
         }
-        write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
+        write!(out, "{}\n{}", self.path_buf.to_str().unwrap_or("/"), output)
     }
 }
 
 #[test]
 fn test_file_info_display() {
     let file_info = FileInfo {
-            algorithm: "ed25519".to_string(),
-            pem_tag: "OPENSSH PRIVATE KEY".to_string(),
-            is_directory: false,
-            is_encrypted: true,
-            is_file: true,
-            is_pem: true,
-            is_private_key: true,
-            is_public_key: false,
-            is_readable: true,
-            is_size_large: false,
-            is_size_medium: true,
-            is_size_small: false,
-            is_ssh_key: true,
-            path_buf: path::PathBuf::from("/unit-test"),
+        algorithm: "ed25519".to_string(),
+        pem_tag: "OPENSSH PRIVATE KEY".to_string(),
+        is_directory: false,
+        is_encrypted: true,
+        is_file: true,
+        is_pem: true,
+        is_private_key: true,
+        is_public_key: false,
+        is_readable: true,
+        is_size_large: false,
+        is_size_medium: true,
+        is_size_small: false,
+        is_ssh_key: true,
+        path_buf: path::PathBuf::from("/unit-test"),
     };
-    assert_eq!(format!("{}", file_info), "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
+    assert_eq!(format!("{}", file_info),
+               "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
     let file_info = FileInfo {
-            algorithm: "rsa".to_string(),
-            pem_tag: "".to_string(),
-            is_directory: false,
-            is_encrypted: false,
-            is_file: true,
-            is_pem: true,
-            is_private_key: false,
-            is_public_key: true,
-            is_readable: true,
-            is_size_large: false,
-            is_size_medium: true,
-            is_size_small: false,
-            is_ssh_key: true,
-            path_buf: path::PathBuf::from("/unit-test"),
+        algorithm: "rsa".to_string(),
+        pem_tag: "".to_string(),
+        is_directory: false,
+        is_encrypted: false,
+        is_file: true,
+        is_pem: true,
+        is_private_key: false,
+        is_public_key: true,
+        is_readable: true,
+        is_size_large: false,
+        is_size_medium: true,
+        is_size_small: false,
+        is_ssh_key: true,
+        path_buf: path::PathBuf::from("/unit-test"),
     };
-    assert_eq!(format!("{}", file_info), "/unit-test\n\t✓ public ssh key (rsa)\n");
+    assert_eq!(format!("{}", file_info),
+               "/unit-test\n\t✓ public ssh key (rsa)\n");
 }

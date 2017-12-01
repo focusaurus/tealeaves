@@ -8,7 +8,7 @@ use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
 use std::io;
-use std::io::{ErrorKind,Read};
+use std::io::{ErrorKind, Read};
 use std::path::{PathBuf, Path};
 
 struct PrivateKey {
@@ -76,7 +76,6 @@ pub fn scan<P: Permissions + PermissionsExt,
     (fs: &F,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
-    println!("HEY scan starting");
 
     let meta = fs.metadata(path)?;
     let is_directory = meta.is_dir();
@@ -130,11 +129,9 @@ pub fn scan<P: Permissions + PermissionsExt,
             algorithm = "ecdsa";
             is_public_key = true;
         }
-        println!("HEY about to parse");
         let parsed_result = pem::parse(content);
         match parsed_result {
             Ok(pem) => {
-                println!("HEY parsed pem {}", pem.tag);
                 is_pem = true;
                 pem_tag = pem.tag.to_string();
                 match pem.tag.as_str() {
@@ -165,6 +162,10 @@ pub fn scan<P: Permissions + PermissionsExt,
                     }
                     "DSA PRIVATE KEY" => {
                         algorithm = "dsa";
+                        is_private_key = true;
+                    }
+                    "ENCRYPTED PRIVATE KEY" => {
+                        is_encrypted = true;
                         is_private_key = true;
                     }
                     _ => (),

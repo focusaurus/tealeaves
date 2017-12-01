@@ -11,7 +11,7 @@ use std::io::Write;
 
 fn memfs() -> FS {
     let fs = rsfs::mem::unix::FS::new();
-    fs.create_dir_all("/tmp").unwrap();
+    fs.create_dir_all("/tmp");
     fs
 }
 
@@ -114,5 +114,9 @@ fn pem_long_field_gets_detected() {
     pem.write(b"-----END OPENSSH PRIVATE KEY-----\n");
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_err());
-    assert!(result.err().unwrap().description().starts_with("Field size too large"));
+    assert!(result
+                .err()
+                .unwrap()
+                .description()
+                .starts_with("Field size too large"));
 }
