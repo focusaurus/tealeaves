@@ -78,7 +78,7 @@ fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> Vec<u8> {
     word
 }
 
-fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
+fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
     /*
     byte[]	AUTH_MAGIC
     string	ciphername
@@ -96,8 +96,8 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
     let _kdfname = read_field(&mut reader);
     // kdfoptions (don't really care)
     let _kdfoptions = read_field(&mut reader);
-    let _pub_key_count = reader.read_u32::<BigEndian>().unwrap();
-    let _key_length = reader.read_u32::<BigEndian>().unwrap();
+    let _pub_key_count = reader.read_u32::<BigEndian>()?;
+    let _key_length = reader.read_u32::<BigEndian>()?;
     let key_type = read_field(&mut reader);
     let algorithm = match key_type.as_slice() {
         b"ssh-ed25519" => Some("ed25519"),
@@ -109,10 +109,10 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
         b"none" => false,
         _ => true,
     };
-    PrivateKey {
+    Ok(PrivateKey {
         algorithm,
         encrypted,
-    }
+    })
 }
 
 pub fn scan<P: Permissions + PermissionsExt,
@@ -186,7 +186,7 @@ pub fn scan<P: Permissions + PermissionsExt,
                     is_private_key = prefix == &pem.contents[0..prefix.len()];
                 }
                 if is_private_key {
-                    let details = identify_openssh_v1(pem.contents);
+                    let details = identify_openssh_v1(pem.contents)?;
                     is_encrypted = details.encrypted;
                     match details.algorithm {
                         Some(name) => algorithm = name,
