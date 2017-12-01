@@ -4,6 +4,7 @@ version = "0.2.0"
 authors = ["Peter Lyons <pete@peterlyons.com>"]
 
 [dependencies]
+yasna = "0.1.3"
 base64 = "0.6.0"
 byteorder = "1.1.0"
 clap = "2.27.1"
