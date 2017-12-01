@@ -100,6 +100,51 @@ impl fmt::Display for FileInfo2 {
     }
 }
 
+struct PrivateKey {
+    algorithm: Option<&'static str>,
+    encrypted: bool,
+}
+
+fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
+    PrivateKey {
+        algorithm: Some("rsa"),
+        encrypted: false,
+    }
+    /*
+    let prefix = b"openssh-key-v1";
+    let starts_with_prefix = bytes.len() >= prefix.len() && prefix == &bytes[0..prefix.len()];
+    if !starts_with_prefix {
+        return Err(io::Error::new(io::ErrorKind::Other, "Unknown key format".to_string()));
+    }
+    result.push_str("\t✓ OpenSSH private key (v1)");
+
+    // Make a reader for everything after the prefix plus the null byte
+    let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
+    let cipher_name = read_field(&mut reader);
+    match cipher_name.as_slice() {
+        b"none" => result.push_str(", not encrypted"),
+        _ => {
+            result.push_str(", encrypted with ");
+            result.push_str(&String::from_utf8_lossy(&cipher_name));
+        }
+    }
+    let kdfname = read_field(&mut reader);
+    // kdfoptions (don't really care)
+    let kdfoptions = read_field(&mut reader);
+    let pub_key_count = reader.read_u32::<BigEndian>().unwrap();
+    let key_length = reader.read_u32::<BigEndian>().unwrap();
+    let key_type = read_field(&mut reader);
+    result.push_str(", algorithm: ");
+    result.push_str(match key_type.as_slice() {
+                        b"ssh-ed25519" => "ed25519",
+                        b"ssh-rsa" => "RSA",
+                        b"ssh-dss" => "DSA",
+                        _ => "UNKNOWN",
+                    });
+    Ok(result)
+    */
+}
+
 pub fn scan4<P: Permissions + PermissionsExt,
              M: Metadata<Permissions = P>,
              F: GenFS<Permissions = P, Metadata = M>>
@@ -169,11 +214,15 @@ pub fn scan4<P: Permissions + PermissionsExt,
                 if pem.contents.len() >= prefix.len() {
                     is_private_key = prefix == &pem.contents[0..prefix.len()];
                 }
-                let mut fields = pem.contents[prefix.len() - 1..].split(|&byte| byte == 0);
-                let cipher_name = fields.next().unwrap_or(b"UNKNOWN");
-                println!("@bug {:?}", String::from_utf8_lossy(cipher_name));
-                if cipher_name != b"none" && cipher_name != b"UNKNOWN" {
-                    is_encrypted = true;
+                if is_private_key {
+                    let details = identify_openssh_v1(pem.contents);
+                    is_encrypted = details.encrypted;
+                    match details.algorithm {
+                        Some("ed25519") => is_ed25519 = true,
+                        Some("rsa") => is_rsa = true,
+                        Some("dsa") => is_dsa = true,
+                        _ => (),
+                    }
                 }
                 /*                	byte[]	AUTH_MAGIC
 	string	ciphername
@@ -216,8 +265,8 @@ pub fn scan4<P: Permissions + PermissionsExt,
            path_buf,
        })
 }
-
-pub fn scan<P: Permissions + PermissionsExt,
+/*
+pub fn scan_old_1<P: Permissions + PermissionsExt,
             M: Metadata<Permissions = P>,
             F: GenFS<Permissions = P, Metadata = M>>
     (fs: &F,
@@ -265,3 +314,4 @@ pub fn scan<P: Permissions + PermissionsExt,
 
     Ok(FileInfo { path_buf, checks })
 }
+*/
