@@ -1,10 +1,6 @@
 extern crate byteorder;
 extern crate pem;
 extern crate rsfs;
-mod level;
-pub mod check;
-pub use check::Check;
-pub use level::Level;
 use byteorder::{BigEndian, ReadBytesExt};
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
