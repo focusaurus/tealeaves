@@ -46,12 +46,24 @@ fn keyhole() -> io::Result<()> {
         let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
         let cipher_name = read_string(&mut reader);
         println!("cipher: {}", cipher_name);
+
         let kdfname = read_string(&mut reader);
         println!("kdfname: {}", kdfname);
-        let kdfoptions = read_string(&mut reader);
-        println!("kdfoptions: {}", kdfoptions);
+
+        // kdfoptions (don't really care)
+        let len = reader.read_u32::<BigEndian>().unwrap();
+        let mut kdfoptions = vec![0u8;len as usize];
+        reader
+            .read_exact(&mut kdfoptions.as_mut_slice())
+            .unwrap();
+
         let pub_key_count = reader.read_u32::<BigEndian>().unwrap();
         println!("key count {}", pub_key_count);
+
+        for key_index in 0..pub_key_count {
+            let key = read_string(&mut reader);
+            println!("key {}: {}", key_index, key);
+        }
 
     }
     Ok(())
