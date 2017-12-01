@@ -16,17 +16,14 @@ use std::path::{PathBuf, Path};
 #[derive(Debug)]
 pub struct FileInfo {
     pub algorithm: String,
+    pub pem_tag: String,
     pub is_directory: bool,
-    pub is_dsa: bool,
-    pub is_ecdsa: bool,
-    pub is_ed25519: bool,
     pub is_encrypted: bool,
     pub is_file: bool,
     pub is_pem: bool,
     pub is_private_key: bool,
     pub is_public_key: bool,
     pub is_readable: bool,
-    pub is_rsa: bool,
     pub is_size_large: bool,
     pub is_size_medium: bool,
     pub is_size_small: bool,
@@ -52,6 +49,10 @@ impl fmt::Display for FileInfo {
             output.push_str("\t✓ public ssh key (");
             output.push_str(&self.algorithm);
             output.push_str(")\n");
+        } else if self.is_pem {
+            output.push_str("\t⚠️ unrecognized PEM: ");
+            output.push_str(&self.pem_tag);
+            output.push_str("\n");
         } else if self.is_size_small {
             output.push_str("\t⚠️ unrecognized small file\n");
         } else if self.is_size_large {
@@ -110,9 +111,9 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
         _ => true,
     };
     Ok(PrivateKey {
-        algorithm,
-        encrypted,
-    })
+           algorithm,
+           encrypted,
+       })
 }
 
 pub fn scan<P: Permissions + PermissionsExt,
@@ -125,19 +126,16 @@ pub fn scan<P: Permissions + PermissionsExt,
     let meta = fs.metadata(path)?;
     let is_directory = meta.is_dir();
     let is_file = meta.is_file();
-    let mut is_dsa = false;
-    let mut is_ecdsa = false;
-    let mut is_ed25519 = false;
     let mut is_encrypted = false;
     let mut is_pem = false;
     let mut is_private_key = false;
     let mut is_public_key = false;
     let mut is_readable = false;
-    let mut is_rsa = false;
     let mut is_size_large = false;
     let mut is_size_medium = false;
     let mut is_size_small = false;
     let mut algorithm = "unknown";
+    let mut pem_tag = "".to_string();
     let is_ssh_key = false;
     if is_file {
         let mode = meta.permissions().mode();
@@ -162,36 +160,57 @@ pub fn scan<P: Permissions + PermissionsExt,
         let mut file = fs.open_file(path)?;
         file.read_to_string(&mut content)?;
         if content.starts_with("ssh-ed25519 ") {
+            algorithm = "ecdsa";
             is_public_key = true;
-            is_ed25519 = true;
         }
         if content.starts_with("ssh-rsa ") {
+            algorithm = "rsa";
             is_public_key = true;
-            is_rsa = true;
         }
         if content.starts_with("ssh-dss ") {
+            algorithm = "dsa";
             is_public_key = true;
-            is_dsa = true;
         }
         if content.starts_with("ecdsa-sha2-nistp256 ") {
+            algorithm = "ecdsa";
             is_public_key = true;
-            is_ecdsa = true;
         }
         let parsed_result = pem::parse(content);
         match parsed_result {
             Ok(pem) => {
                 is_pem = true;
-                let prefix = b"openssh-key-v1";
-                if pem.contents.len() >= prefix.len() {
-                    is_private_key = prefix == &pem.contents[0..prefix.len()];
-                }
-                if is_private_key {
-                    let details = identify_openssh_v1(pem.contents)?;
-                    is_encrypted = details.encrypted;
-                    match details.algorithm {
-                        Some(name) => algorithm = name,
-                        _ => (),
+                pem_tag = pem.tag.to_string();
+                match pem.tag.as_str() {
+                    "OPENSSH PRIVATE KEY" => {
+                        algorithm = "ed25519";
+                        is_private_key = true;
+                        let prefix = b"openssh-key-v1";
+                        let mut has_prefix = false;
+                        if pem.contents.len() >= prefix.len() {
+                            has_prefix = prefix == &pem.contents[0..prefix.len()];
+                        }
+                        if has_prefix {
+                            let details = identify_openssh_v1(pem.contents)?;
+                            is_encrypted = details.encrypted;
+                            match details.algorithm {
+                                Some(name) => algorithm = name,
+                                _ => (),
+                            }
+                        }
                     }
+                    "RSA PRIVATE KEY" => {
+                        algorithm = "rsa";
+                        is_private_key = true;
+                    }
+                    "EC PRIVATE KEY" => {
+                        is_private_key = true;
+                        algorithm = "ecdsa";
+                    }
+                    "DSA PRIVATE KEY" => {
+                        algorithm = "dsa";
+                        is_private_key = true;
+                    }
+                    _ => (),
                 }
             }
             _ => (),
@@ -204,20 +223,17 @@ pub fn scan<P: Permissions + PermissionsExt,
     Ok(FileInfo {
            algorithm: algorithm.to_string(),
            is_directory,
-           is_dsa,
-           is_ecdsa,
-           is_ed25519,
            is_encrypted,
            is_file,
            is_pem,
            is_private_key,
            is_public_key,
            is_readable,
-           is_rsa,
            is_size_large,
            is_size_medium,
            is_size_small,
            is_ssh_key,
            path_buf,
+           pem_tag,
        })
 }
