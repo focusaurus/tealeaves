@@ -23,6 +23,9 @@ OpenSSH supports the following key types
 - [RFC 4716](https://tools.ietf.org/html/rfc4716) supposedly the ssh public key file format, but my ssh-keygen on macOS 10.13 does not generate this format by default.
 - PKCS8
 - https://lionet.info/asn1c/basics.html
+- https://blog.mozilla.org/warner/2011/11/29/ed25519-keys/
+- https://github.com/golang/crypto/blob/master/bcrypt/bcrypt.go
+- https://tools.ietf.org/html/rfc4253#section-6.6
 
 ## Stream of consciousness notes to organize later
 - `brew install asn1c`

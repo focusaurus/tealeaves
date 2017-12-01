@@ -7,11 +7,14 @@ use std::io;
 use std::io::{BufRead, Read};
 use std::iter::Iterator;
 
-fn read_string<R: ReadBytesExt + Read>(reader: &mut R) -> String {
+/// Read a length-prefixed field in the format openssh uses
+/// which is a 4-byte big-endian u32 length
+/// followed by that many bytes of payload
+fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> Vec<u8> {
     let len = reader.read_u32::<BigEndian>().unwrap();
     let mut word = vec![0u8;len as usize];
     reader.read_exact(&mut word.as_mut_slice()).unwrap();
-    String::from_utf8(word).unwrap()
+    word
 }
 
 fn keyhole() -> io::Result<()> {
@@ -44,27 +47,36 @@ fn keyhole() -> io::Result<()> {
 
         // Make a reader for everything after the prefix plus the null byte
         let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
-        let cipher_name = read_string(&mut reader);
-        println!("cipher: {}", cipher_name);
+        let cipher_name = read_field(&mut reader);
+        // println!("cipher: {}",
+        //        match cipher_name.as_slice() {
+        //            b"none" => "none",
+        //            b"aes256-cbc" => "aes256-cbc",
+        //            _ => "UNKNOWN",
+        //        });
 
-        let kdfname = read_string(&mut reader);
-        println!("kdfname: {}", kdfname);
-
-        // kdfoptions (don't really care)
-        let len = reader.read_u32::<BigEndian>().unwrap();
-        let mut kdfoptions = vec![0u8;len as usize];
-        reader
-            .read_exact(&mut kdfoptions.as_mut_slice())
-            .unwrap();
-
-        let pub_key_count = reader.read_u32::<BigEndian>().unwrap();
-        println!("key count {}", pub_key_count);
-
-        for key_index in 0..pub_key_count {
-            let key = read_string(&mut reader);
-            println!("key {}: {}", key_index, key);
+        let kdfname = read_field(&mut reader);
+        match cipher_name.as_slice() {
+            b"none" => println!("not encrypted"),
+            _ => {
+                println!("encrypted with {}", String::from_utf8_lossy(&cipher_name));
+            }
         }
 
+        // kdfoptions (don't really care)
+        let kdfoptions = read_field(&mut reader);
+        let pub_key_count = reader.read_u32::<BigEndian>().unwrap();
+        // println!("key count {}", pub_key_count);
+        let key_length = reader.read_u32::<BigEndian>().unwrap();
+        let key_type = read_field(&mut reader);
+        // println!("{}", String::from_utf8_lossy(&key_type));
+        println!("algorithm: {}",
+               match key_type.as_slice() {
+                   b"ssh-ed25519" => "ed25519",
+                   b"ssh-rsa" => "RSA",
+                   b"ssh-dss" => "DSA",
+                   _ => "UNKNOWN",
+               });
     }
     Ok(())
 }
