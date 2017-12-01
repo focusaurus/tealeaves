@@ -1,16 +1,19 @@
-extern crate rsfs;
+extern crate byteorder;
 extern crate pem;
+extern crate rsfs;
 mod level;
 pub mod check;
 pub use check::Check;
 pub use level::Level;
+use byteorder::{BigEndian, ReadBytesExt};
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
 use std::{io, path, fmt};
-use std::path::{PathBuf, Path};
 use std::io::Read;
+use std::path::{PathBuf, Path};
 
+/*
 #[derive(Debug)]
 pub struct FileInfo {
     pub path_buf: path::PathBuf,
@@ -34,9 +37,11 @@ impl fmt::Display for FileInfo {
         write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
     }
 }
+*/
 
 #[derive(Debug)]
 pub struct FileInfo2 {
+    pub algorithm: String,
     pub is_directory: bool,
     pub is_dsa: bool,
     pub is_ecdsa: bool,
@@ -55,23 +60,23 @@ pub struct FileInfo2 {
     pub path_buf: path::PathBuf,
 }
 
-impl FileInfo2 {
-    fn algorithm(&self) -> &str {
-        if self.is_dsa {
-            return "dsa";
-        }
-        if self.is_rsa {
-            return "rsa";
-        }
-        if self.is_ecdsa {
-            return "ecdsa";
-        }
-        if self.is_ed25519 {
-            return "ed25519";
-        }
-        return "unknown";
-    }
-}
+// impl FileInfo2 {
+//     fn algorithm(&self) -> &str {
+//         if self.is_dsa {
+//             return "dsa";
+//         }
+//         if self.is_rsa {
+//             return "rsa";
+//         }
+//         if self.is_ecdsa {
+//             return "ecdsa";
+//         }
+//         if self.is_ed25519 {
+//             return "ed25519";
+//         }
+//         return "unknown";
+//     }
+// }
 
 impl fmt::Display for FileInfo2 {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
@@ -80,14 +85,16 @@ impl fmt::Display for FileInfo2 {
             output.push_str("\t✓ is a directory\n");
         } else if self.is_private_key {
             output.push_str("\t✓ private ssh key (");
-            output.push_str(self.algorithm());
-            output.push_str(")\n");
+            output.push_str(&self.algorithm);
+            output.push_str(", ");
             if self.is_encrypted {
-                output.push_str("\t✓ is encrypted");
+                output.push_str("encrypted)\n");
+            } else {
+                output.push_str("not encrypted)\n");
             }
         } else if self.is_public_key {
             output.push_str("\t✓ public ssh key (");
-            output.push_str(self.algorithm());
+            output.push_str(&self.algorithm);
             output.push_str(")\n");
         } else if self.is_size_small {
             output.push_str("\t⚠️ unrecognized small file\n");
@@ -105,44 +112,51 @@ struct PrivateKey {
     encrypted: bool,
 }
 
-fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
-    PrivateKey {
-        algorithm: Some("rsa"),
-        encrypted: false,
-    }
-    /*
-    let prefix = b"openssh-key-v1";
-    let starts_with_prefix = bytes.len() >= prefix.len() && prefix == &bytes[0..prefix.len()];
-    if !starts_with_prefix {
-        return Err(io::Error::new(io::ErrorKind::Other, "Unknown key format".to_string()));
-    }
-    result.push_str("\t✓ OpenSSH private key (v1)");
+/// Read a length-prefixed field in the format openssh uses
+/// which is a 4-byte big-endian u32 length
+/// followed by that many bytes of payload
+fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> Vec<u8> {
+    let len = reader.read_u32::<BigEndian>().unwrap();
+    let mut word = vec![0u8;len as usize];
+    reader.read_exact(&mut word.as_mut_slice()).unwrap();
+    word
+}
 
+fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
+    /*
+    byte[]	AUTH_MAGIC
+    string	ciphername
+    string	kdfname
+    string	kdfoptions
+    int	number of keys N
+    string	publickey1
+    string	publickey2
+    */
+
+    let prefix = b"openssh-key-v1";
     // Make a reader for everything after the prefix plus the null byte
     let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
     let cipher_name = read_field(&mut reader);
-    match cipher_name.as_slice() {
-        b"none" => result.push_str(", not encrypted"),
-        _ => {
-            result.push_str(", encrypted with ");
-            result.push_str(&String::from_utf8_lossy(&cipher_name));
-        }
-    }
-    let kdfname = read_field(&mut reader);
+    let _kdfname = read_field(&mut reader);
     // kdfoptions (don't really care)
-    let kdfoptions = read_field(&mut reader);
-    let pub_key_count = reader.read_u32::<BigEndian>().unwrap();
-    let key_length = reader.read_u32::<BigEndian>().unwrap();
+    let _kdfoptions = read_field(&mut reader);
+    let _pub_key_count = reader.read_u32::<BigEndian>().unwrap();
+    let _key_length = reader.read_u32::<BigEndian>().unwrap();
     let key_type = read_field(&mut reader);
-    result.push_str(", algorithm: ");
-    result.push_str(match key_type.as_slice() {
-                        b"ssh-ed25519" => "ed25519",
-                        b"ssh-rsa" => "RSA",
-                        b"ssh-dss" => "DSA",
-                        _ => "UNKNOWN",
-                    });
-    Ok(result)
-    */
+    let algorithm = match key_type.as_slice() {
+        b"ssh-ed25519" => Some("ed25519"),
+        b"ssh-rsa" => Some("rsa"),
+        b"ssh-dss" => Some("dsa"),
+        _ => None,
+    };
+    let encrypted = match cipher_name.as_slice() {
+        b"none" => false,
+        _ => true,
+    };
+    PrivateKey {
+        algorithm,
+        encrypted,
+    }
 }
 
 pub fn scan4<P: Permissions + PermissionsExt,
@@ -167,6 +181,7 @@ pub fn scan4<P: Permissions + PermissionsExt,
     let mut is_size_large = false;
     let mut is_size_medium = false;
     let mut is_size_small = false;
+    let mut algorithm = "unknown";
     let is_ssh_key = false;
     if is_file {
         let mode = meta.permissions().mode();
@@ -218,20 +233,10 @@ pub fn scan4<P: Permissions + PermissionsExt,
                     let details = identify_openssh_v1(pem.contents);
                     is_encrypted = details.encrypted;
                     match details.algorithm {
-                        Some("ed25519") => is_ed25519 = true,
-                        Some("rsa") => is_rsa = true,
-                        Some("dsa") => is_dsa = true,
+                        Some(name) => algorithm = name,
                         _ => (),
                     }
                 }
-                /*                	byte[]	AUTH_MAGIC
-	string	ciphername
-	string	kdfname
-	string	kdfoptions
-	int	number of keys N
-	string	publickey1
-	string	publickey2
-*/
 
                 // if !is_private_key {
                 //     println!("HEY {}: {}",
@@ -247,6 +252,7 @@ pub fn scan4<P: Permissions + PermissionsExt,
     path_buf.push(path);
 
     Ok(FileInfo2 {
+           algorithm: algorithm.to_string(),
            is_directory,
            is_dsa,
            is_ecdsa,
