@@ -1,9 +1,12 @@
+extern crate base64;
+extern crate hex;
 extern crate rsfs;
 extern crate tealeaves;
 use rsfs::GenFS;
 use rsfs::mem::unix::FS;
 use rsfs::mem::unix::Permissions;
 use rsfs::unix_ext::PermissionsExt;
+use std::error::Error;
 use std::io::Write;
 
 fn memfs() -> FS {
@@ -92,4 +95,24 @@ fn high_size_gets_error() {
     assert!(file_info.is_size_large);
     assert!(!file_info.is_size_small);
     assert!(!file_info.is_size_medium);
+}
+
+
+#[test]
+fn pem_long_field_gets_detected() {
+    let fs = memfs();
+    let mut pem = fs.create_file("/tmp/pem-too-long-field").unwrap();
+    // Here's the hex of the start of a valid openssh-key-v1, but the first field length
+    // is 4097 (00001001 in hex) which is above 4096 safe limit we will read
+    //                           4097 length:  00001001
+    let bogus = "6f70656e7373682d6b65792d76310000001001";
+    let bin = hex::decode(bogus).unwrap();
+    let base64 = base64::encode(&bin);
+    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n");
+    pem.write(base64.as_bytes());
+    pem.write(b"\n");
+    pem.write(b"-----END OPENSSH PRIVATE KEY-----\n");
+    let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
+    assert!(result.is_err());
+    assert!(result.err().unwrap().description().starts_with("Field size too large"));
 }

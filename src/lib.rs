@@ -8,7 +8,7 @@ use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
 use std::io;
-use std::io::Read;
+use std::io::{ErrorKind,Read};
 use std::path::{PathBuf, Path};
 
 struct PrivateKey {
@@ -16,14 +16,21 @@ struct PrivateKey {
     encrypted: bool,
 }
 
+fn bail(message: String) -> io::Error {
+    return io::Error::new(ErrorKind::Other, message);
+}
+
 /// Read a length-prefixed field in the format openssh uses
 /// which is a 4-byte big-endian u32 length
 /// followed by that many bytes of payload
-fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> Vec<u8> {
-    let len = reader.read_u32::<BigEndian>().unwrap();
+fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
+    let len = reader.read_u32::<BigEndian>()?;
+    if len > 4096 {
+        return Err(bail("Field size too large. File possibly corrupt.".to_string()));
+    }
     let mut word = vec![0u8;len as usize];
-    reader.read_exact(&mut word.as_mut_slice()).unwrap();
-    word
+    reader.read_exact(&mut word.as_mut_slice())?;
+    Ok(word)
 }
 
 fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
@@ -40,13 +47,13 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
     let prefix = b"openssh-key-v1";
     // Make a reader for everything after the prefix plus the null byte
     let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
-    let cipher_name = read_field(&mut reader);
+    let cipher_name = read_field(&mut reader)?;
     let _kdfname = read_field(&mut reader);
     // kdfoptions (don't really care)
     let _kdfoptions = read_field(&mut reader);
     let _pub_key_count = reader.read_u32::<BigEndian>()?;
     let _key_length = reader.read_u32::<BigEndian>()?;
-    let key_type = read_field(&mut reader);
+    let key_type = read_field(&mut reader)?;
     let algorithm = match key_type.as_slice() {
         b"ssh-ed25519" => Some("ed25519"),
         b"ssh-rsa" => Some("rsa"),
@@ -69,6 +76,7 @@ pub fn scan<P: Permissions + PermissionsExt,
     (fs: &F,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
+    println!("HEY scan starting");
 
     let meta = fs.metadata(path)?;
     let is_directory = meta.is_dir();
@@ -122,9 +130,11 @@ pub fn scan<P: Permissions + PermissionsExt,
             algorithm = "ecdsa";
             is_public_key = true;
         }
+        println!("HEY about to parse");
         let parsed_result = pem::parse(content);
         match parsed_result {
             Ok(pem) => {
+                println!("HEY parsed pem {}", pem.tag);
                 is_pem = true;
                 pem_tag = pem.tag.to_string();
                 match pem.tag.as_str() {

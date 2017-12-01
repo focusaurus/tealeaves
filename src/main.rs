@@ -14,10 +14,13 @@ fn main() {
                  .help("Paths to files/directories of interest"))
         .get_matches();
     let fs = rsfs::disk::FS;
-    for info in matches
+    for result in matches
             .values_of("paths")
             .unwrap()
             .map(|p| tealeaves::scan(&fs, &p)) {
-        println!("{}", info.unwrap());
+        match result {
+            Ok(info) => println!("{}", info),
+            Err(message) => eprintln!("{}", message),
+        };
     }
 }
