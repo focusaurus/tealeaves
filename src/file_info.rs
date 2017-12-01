@@ -70,4 +70,21 @@ fn test_file_info_display() {
             path_buf: path::PathBuf::from("/unit-test"),
     };
     assert_eq!(format!("{}", file_info), "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
+    let file_info = FileInfo {
+            algorithm: "rsa".to_string(),
+            pem_tag: "".to_string(),
+            is_directory: false,
+            is_encrypted: false,
+            is_file: true,
+            is_pem: true,
+            is_private_key: false,
+            is_public_key: true,
+            is_readable: true,
+            is_size_large: false,
+            is_size_medium: true,
+            is_size_small: false,
+            is_ssh_key: true,
+            path_buf: path::PathBuf::from("/unit-test"),
+    };
+    assert_eq!(format!("{}", file_info), "/unit-test\n\t✓ public ssh key (rsa)\n");
 }
