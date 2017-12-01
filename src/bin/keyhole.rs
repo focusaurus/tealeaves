@@ -111,13 +111,6 @@ fn keyhole() -> io::Result<()> {
         // Make a reader for everything after the prefix plus the null byte
         let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
         let cipher_name = read_field(&mut reader);
-        // println!("cipher: {}",
-        //        match cipher_name.as_slice() {
-        //            b"none" => "none",
-        //            b"aes256-cbc" => "aes256-cbc",
-        //            _ => "UNKNOWN",
-        //        });
-
         let kdfname = read_field(&mut reader);
         match cipher_name.as_slice() {
             b"none" => println!("not encrypted"),
@@ -127,12 +120,10 @@ fn keyhole() -> io::Result<()> {
         }
 
         // kdfoptions (don't really care)
-        let kdfoptions = read_field(&mut reader);
-        let pub_key_count = reader.read_u32::<BigEndian>().unwrap();
-        // println!("key count {}", pub_key_count);
-        let key_length = reader.read_u32::<BigEndian>().unwrap();
+        let _kdfoptions = read_field(&mut reader);
+        let _pub_key_count = reader.read_u32::<BigEndian>().unwrap();
+        let _key_length = reader.read_u32::<BigEndian>().unwrap();
         let key_type = read_field(&mut reader);
-        // println!("{}", String::from_utf8_lossy(&key_type));
         println!("algorithm: {}",
                  match key_type.as_slice() {
                      b"ssh-ed25519" => "ed25519",

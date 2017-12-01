@@ -14,7 +14,7 @@ use std::io::Read;
 use std::path::{PathBuf, Path};
 
 #[derive(Debug)]
-pub struct FileInfo2 {
+pub struct FileInfo {
     pub algorithm: String,
     pub is_directory: bool,
     pub is_dsa: bool,
@@ -34,7 +34,7 @@ pub struct FileInfo2 {
     pub path_buf: path::PathBuf,
 }
 
-impl fmt::Display for FileInfo2 {
+impl fmt::Display for FileInfo {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         if self.is_directory {
@@ -116,11 +116,11 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
 }
 
 pub fn scan<P: Permissions + PermissionsExt,
-             M: Metadata<Permissions = P>,
-             F: GenFS<Permissions = P, Metadata = M>>
+            M: Metadata<Permissions = P>,
+            F: GenFS<Permissions = P, Metadata = M>>
     (fs: &F,
      path: &AsRef<Path>)
-     -> io::Result<FileInfo2> {
+     -> io::Result<FileInfo> {
 
     let meta = fs.metadata(path)?;
     let is_directory = meta.is_dir();
@@ -193,12 +193,6 @@ pub fn scan<P: Permissions + PermissionsExt,
                         _ => (),
                     }
                 }
-
-                // if !is_private_key {
-                //     println!("HEY {}: {}",
-                //              &path.display(),
-                //              String::from_utf8_lossy(&pem.contents[0..100]));
-                // }
             }
             _ => (),
         }
@@ -207,7 +201,7 @@ pub fn scan<P: Permissions + PermissionsExt,
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
 
-    Ok(FileInfo2 {
+    Ok(FileInfo {
            algorithm: algorithm.to_string(),
            is_directory,
            is_dsa,
