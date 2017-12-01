@@ -13,32 +13,6 @@ use std::{io, path, fmt};
 use std::io::Read;
 use std::path::{PathBuf, Path};
 
-/*
-#[derive(Debug)]
-pub struct FileInfo {
-    pub path_buf: path::PathBuf,
-    pub checks: Vec<Check>,
-}
-
-impl FileInfo {
-    pub fn new(path_buf: PathBuf, checks: Vec<Check>) -> Self {
-        FileInfo { path_buf, checks }
-    }
-}
-
-impl fmt::Display for FileInfo {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        let mut output = String::new();
-        let mut checks = self.checks.to_vec();
-        checks.sort();
-        for check in checks {
-            output.push_str(&format!("\t {}\n", check));
-        }
-        write!(out, "{}\n{}", self.path_buf.to_str().unwrap(), output)
-    }
-}
-*/
-
 #[derive(Debug)]
 pub struct FileInfo2 {
     pub algorithm: String,
@@ -59,24 +33,6 @@ pub struct FileInfo2 {
     pub is_ssh_key: bool,
     pub path_buf: path::PathBuf,
 }
-
-// impl FileInfo2 {
-//     fn algorithm(&self) -> &str {
-//         if self.is_dsa {
-//             return "dsa";
-//         }
-//         if self.is_rsa {
-//             return "rsa";
-//         }
-//         if self.is_ecdsa {
-//             return "ecdsa";
-//         }
-//         if self.is_ed25519 {
-//             return "ed25519";
-//         }
-//         return "unknown";
-//     }
-// }
 
 impl fmt::Display for FileInfo2 {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
@@ -159,7 +115,7 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> PrivateKey {
     }
 }
 
-pub fn scan4<P: Permissions + PermissionsExt,
+pub fn scan<P: Permissions + PermissionsExt,
              M: Metadata<Permissions = P>,
              F: GenFS<Permissions = P, Metadata = M>>
     (fs: &F,
@@ -271,53 +227,3 @@ pub fn scan4<P: Permissions + PermissionsExt,
            path_buf,
        })
 }
-/*
-pub fn scan_old_1<P: Permissions + PermissionsExt,
-            M: Metadata<Permissions = P>,
-            F: GenFS<Permissions = P, Metadata = M>>
-    (fs: &F,
-     path: &AsRef<Path>)
-     -> io::Result<FileInfo> {
-    let mut checks: Vec<Check> = vec![];
-    let meta = fs.metadata(path)?;
-    if meta.is_dir() {
-        checks.push(Check::directory());
-    }
-    if meta.is_file() {
-        let mode = meta.permissions().mode();
-        // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
-        let can_read = mode & 0o444 != 0;
-        if meta.is_empty() {
-            checks.push(Check::empty());
-        }
-        if can_read {
-            match meta.len() {
-                0...50 => checks.push(Check::too_small()),
-                51...4096 => {
-                    let mut content = String::new();
-                    let mut file = fs.open_file(path)?;
-                    file.read_to_string(&mut content)?;
-                    if content.starts_with("ssh-ed25519 ") {
-                        checks.push(Check::public_key_ed25519());
-                    }
-                    if content.starts_with("ssh-rsa ") {
-                        checks.push(Check::public_key_rsa());
-                    }
-                    let parsed_result = pem::parse(content);
-                    match parsed_result {
-                        Ok(_) => checks.push(Check::pem()),
-                        _ => checks.push(Check::not_pem()),
-                    }
-                }
-                _ => checks.push(Check::too_big()),
-            }
-        } else {
-            checks.push(Check::unreadable());
-        }
-    }
-    let mut path_buf = PathBuf::new();
-    path_buf.push(path);
-
-    Ok(FileInfo { path_buf, checks })
-}
-*/
