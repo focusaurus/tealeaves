@@ -197,6 +197,7 @@ Warning: Input is non-seekable, some functionality has been disabled.
 - https://tools.ietf.org/html/rfc4253#section-6.6
 - https://peterlyons.com/problog/2017/12/openssh-ed25519-private-key-file-format
 - https://etherhack.co.uk/asymmetric/docs/rsa_key_breakdown.html
+- https://crypto.stackexchange.com/a/21104
 
 ## Stream of consciousness notes to organize later
 - `brew install asn1c`

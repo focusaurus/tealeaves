@@ -15,6 +15,7 @@ pub struct FileInfo {
     pub is_size_medium: bool,
     pub is_size_small: bool,
     pub is_ssh_key: bool,
+    pub rsa_size: usize,
     pub path_buf: path::PathBuf,
 }
 
@@ -28,10 +29,14 @@ impl fmt::Display for FileInfo {
             output.push_str(&self.algorithm);
             output.push_str(", ");
             if self.is_encrypted {
-                output.push_str("encrypted)\n");
+                output.push_str("encrypted");
             } else {
-                output.push_str("not encrypted)\n");
+                output.push_str("not encrypted");
             }
+            if self.rsa_size > 0 {
+                output.push_str(&format!(", {} bits", self.rsa_size));
+            }
+            output.push_str(")\n");
         } else if self.is_public_key {
             output.push_str("\t✓ public ssh key (");
             output.push_str(&self.algorithm);
@@ -67,6 +72,7 @@ fn test_file_info_display() {
         is_size_medium: true,
         is_size_small: false,
         is_ssh_key: true,
+        rsa_size: 0,
         path_buf: path::PathBuf::from("/unit-test"),
     };
     assert_eq!(format!("{}", file_info),
@@ -85,6 +91,7 @@ fn test_file_info_display() {
         is_size_medium: true,
         is_size_small: false,
         is_ssh_key: true,
+        rsa_size: 0,
         path_buf: path::PathBuf::from("/unit-test"),
     };
     assert_eq!(format!("{}", file_info),

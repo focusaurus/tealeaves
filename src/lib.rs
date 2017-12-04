@@ -1,6 +1,7 @@
 extern crate byteorder;
 extern crate pem;
 extern crate rsfs;
+extern crate yasna;
 mod file_info;
 use byteorder::{BigEndian, ReadBytesExt};
 use file_info::FileInfo;
@@ -70,6 +71,32 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
        })
 }
 
+fn get_rsa_size(asn1_bytes: &[u8]) -> usize {
+    let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
+        reader.read_sequence(|reader| {
+            println!("reading rsa version");
+            let _rsa_version = try!(reader.next().read_i8());
+            println!("reading modulus");
+            let modulus = try!(reader.next().read_bigint());
+            println!("modulus: {:?}", modulus.bits());
+            let _ignore = try!(reader.next().read_bigint());
+            let _ignore = try!(reader.next().read_bigint());
+            let _ignore = try!(reader.next().read_bigint());
+            let _ignore = try!(reader.next().read_bigint());
+            let _ignore = try!(reader.next().read_bigint());
+            let _ignore = try!(reader.next().read_bigint());
+            let _ignore = try!(reader.next().read_bigint());
+            // return Ok((i, b));
+            return Ok(modulus.bits());
+        })
+    });
+    match asn_result {
+        Ok(bits) => return bits,
+        Err(message) => return 0,
+    }
+
+}
+
 pub fn scan<P: Permissions + PermissionsExt,
             M: Metadata<Permissions = P>,
             F: GenFS<Permissions = P, Metadata = M>>
@@ -90,6 +117,7 @@ pub fn scan<P: Permissions + PermissionsExt,
     let mut is_size_small = false;
     let mut algorithm = "unknown";
     let mut pem_tag = "".to_string();
+    let mut rsa_size = 0;
     let is_ssh_key = false;
     if is_file {
         let mode = meta.permissions().mode();
@@ -155,6 +183,8 @@ pub fn scan<P: Permissions + PermissionsExt,
                     "RSA PRIVATE KEY" => {
                         algorithm = "rsa";
                         is_private_key = true;
+                        rsa_size = get_rsa_size(&pem.contents);
+
                     }
                     "EC PRIVATE KEY" => {
                         is_private_key = true;
@@ -193,5 +223,6 @@ pub fn scan<P: Permissions + PermissionsExt,
            is_ssh_key,
            path_buf,
            pem_tag,
+           rsa_size,
        })
 }

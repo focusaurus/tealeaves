@@ -18,16 +18,30 @@ fn assassin() -> io::Result<()> {
         match pem_result {
             Ok(pem) => {
                 println!("PEM {} {}", pem.tag, pem.contents.len());
+                for byte in &pem.contents {
+                    print!("{:x}", byte);
+                }
+                println!("");
                 let asn_result = yasna::parse_der(&pem.contents, |reader| {
                     reader.read_sequence(|reader| {
-                                             // let i = try!(reader.next().read_i64());
-                                             // let b = try!(reader.next().read_bool());
-                                             // return Ok((i, b));
-                                             return Ok(());
-                                         })
+                        println!("reading rsa version");
+                        let _rsa_version = try!(reader.next().read_i8());
+                        println!("reading modulus");
+                        let modulus = try!(reader.next().read_bigint());
+                        println!("modulus: {:?}", modulus.bits());
+                        let _ignore = try!(reader.next().read_bigint());
+                        let _ignore = try!(reader.next().read_bigint());
+                        let _ignore = try!(reader.next().read_bigint());
+                        let _ignore = try!(reader.next().read_bigint());
+                        let _ignore = try!(reader.next().read_bigint());
+                        let _ignore = try!(reader.next().read_bigint());
+                        let _ignore = try!(reader.next().read_bigint());
+                        // return Ok((i, b));
+                        return Ok(modulus.bits());
+                    })
                 });
                 match asn_result {
-                    Ok(_) => println!("ASN.1 OK"),
+                    Ok(bits) => println!("ASN.1 OK: {} bits", bits),
                     Err(message) => println!("ASN.1 NOPE {}", message.description()),
                 }
 
