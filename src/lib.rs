@@ -1,3 +1,4 @@
+extern crate base64;
 extern crate byteorder;
 extern crate pem;
 extern crate rsfs;
@@ -32,6 +33,13 @@ fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
     let mut word = vec![0u8;len as usize];
     reader.read_exact(&mut word.as_mut_slice())?;
     Ok(word)
+}
+
+fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
+    if data.len() < prefix.len() {
+        return false;
+    }
+    return prefix == &data[0..prefix.len()];
 }
 
 fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
@@ -76,13 +84,16 @@ fn get_rsa_size(asn1_bytes: &[u8]) -> usize {
         reader.read_sequence(|reader| {
             let _rsa_version = reader.next().read_i8()?;
             let modulus = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
-            let _ignore = reader.next().read_bigint()?;
+            // We don't need anything else but yasna panics if we leave
+            // unparsed data at the end of the file
+            // so just read them all in
+            let _pub_exp = reader.next().read_bigint()?;
+            let _priv_exp = reader.next().read_bigint()?;
+            let _prime1 = reader.next().read_bigint()?;
+            let _prime2 = reader.next().read_bigint()?;
+            let _exp1 = reader.next().read_bigint()?;
+            let _exp2 = reader.next().read_bigint()?;
+            let _coefficient = reader.next().read_bigint()?;
             return Ok(modulus.bits());
         })
     });
@@ -93,6 +104,29 @@ fn get_rsa_size(asn1_bytes: &[u8]) -> usize {
 
 }
 
+fn validate_ed25519(content: &str) -> Result<(), String> {
+    // let mut iterator = content.split_whitespace();
+    let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
+    // .collect();
+
+    let label = iterator.next().unwrap_or("");
+    println!("label {}", label);
+    let payload = iterator.next().unwrap_or(""); // base64
+    let comment = iterator.next().unwrap_or("");
+    println!("comment {}", comment);
+    let payload = base64::decode(payload).unwrap_or(vec![]); // binary
+    let mut reader = io::BufReader::new(payload.as_slice());
+    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+    println!("algorithm {}", String::from_utf8_lossy(&algorithm));
+    let prefix = has_prefix(b"ssh-ed25519", &algorithm);
+    println!("prefix {}", prefix);
+    let payload = read_field(&mut reader).unwrap_or(vec![]);
+    for byte in payload {
+        print!("{:x}", &byte);
+    }
+    Ok(())
+}
+
 pub fn scan<P: Permissions + PermissionsExt,
             M: Metadata<Permissions = P>,
             F: GenFS<Permissions = P, Metadata = M>>
@@ -100,99 +134,93 @@ pub fn scan<P: Permissions + PermissionsExt,
      path: &AsRef<Path>)
      -> io::Result<FileInfo> {
 
+    let mut file_info = FileInfo::new();
+    let mut path_buf = PathBuf::new();
+    path_buf.push(path);
+    file_info.path_buf = path_buf;
     let meta = fs.metadata(path)?;
-    let is_directory = meta.is_dir();
-    let is_file = meta.is_file();
-    let mut is_encrypted = false;
-    let mut is_pem = false;
-    let mut is_private_key = false;
-    let mut is_public_key = false;
-    let mut is_readable = false;
-    let mut is_size_large = false;
-    let mut is_size_medium = false;
-    let mut is_size_small = false;
-    let mut algorithm = "unknown";
-    let mut pem_tag = "".to_string();
-    let mut rsa_size = 0;
-    let is_ssh_key = false;
-    if is_file {
+    file_info.is_directory = meta.is_dir();
+    file_info.is_file = meta.is_file();
+
+    if file_info.is_file {
         let mode = meta.permissions().mode();
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
-        is_readable = mode & 0o444 != 0;
+        file_info.is_readable = mode & 0o444 != 0;
     }
-    if is_readable {
+    if file_info.is_readable {
         match meta.len() {
             0...50 => {
-                is_size_small = true;
+                file_info.is_size_small = true;
             }
             51...4096 => {
-                is_size_medium = true;
+                file_info.is_size_medium = true;
             }
             _ => {
-                is_size_large = true;
+                file_info.is_size_large = true;
             }
         }
     }
-    if is_size_medium {
+    if file_info.is_size_medium {
         let mut content = String::new();
         let mut file = fs.open_file(path)?;
         file.read_to_string(&mut content)?;
         if content.starts_with("ssh-ed25519 ") {
-            algorithm = "ecdsa";
-            is_public_key = true;
+            file_info.algorithm = "ed25519".to_string();
+            file_info.is_public_key = true;
+            match validate_ed25519(&content) {
+                Err(error) => {
+                    println!("ed25519 errors {:?}", error);
+                }
+                _ => (),
+            }
         }
         if content.starts_with("ssh-rsa ") {
-            algorithm = "rsa";
-            is_public_key = true;
+            file_info.algorithm = "rsa".to_string();
+            file_info.is_public_key = true;
         }
         if content.starts_with("ssh-dss ") {
-            algorithm = "dsa";
-            is_public_key = true;
+            file_info.algorithm = "dsa".to_string();
+            file_info.is_public_key = true;
         }
         if content.starts_with("ecdsa-sha2-nistp256 ") {
-            algorithm = "ecdsa";
-            is_public_key = true;
+            file_info.algorithm = "ecdsa".to_string();
+            file_info.is_public_key = true;
         }
         let parsed_result = pem::parse(content);
         match parsed_result {
             Ok(pem) => {
-                is_pem = true;
-                pem_tag = pem.tag.to_string();
+                file_info.is_pem = true;
+                file_info.pem_tag = pem.tag.to_string();
                 match pem.tag.as_str() {
                     "OPENSSH PRIVATE KEY" => {
-                        algorithm = "ed25519";
-                        is_private_key = true;
-                        let prefix = b"openssh-key-v1";
-                        let mut has_prefix = false;
-                        if pem.contents.len() >= prefix.len() {
-                            has_prefix = prefix == &pem.contents[0..prefix.len()];
-                        }
-                        if has_prefix {
+                        file_info.algorithm = "ed25519".to_string();
+                        file_info.is_private_key = true;
+                        if has_prefix(b"openssh-key-v1", &pem.contents) {
                             let details = identify_openssh_v1(pem.contents)?;
-                            is_encrypted = details.encrypted;
+                            file_info.is_encrypted = details.encrypted;
                             match details.algorithm {
-                                Some(name) => algorithm = name,
+                                Some(name) => file_info.algorithm = name.to_string(),
                                 _ => (),
                             }
                         }
                     }
                     "RSA PRIVATE KEY" => {
-                        algorithm = "rsa";
-                        is_private_key = true;
-                        rsa_size = get_rsa_size(&pem.contents);
+                        file_info.algorithm = "rsa".to_string();
+                        file_info.is_private_key = true;
+                        file_info.rsa_size = get_rsa_size(&pem.contents);
 
                     }
                     "EC PRIVATE KEY" => {
-                        is_private_key = true;
-                        algorithm = "ecdsa";
+                        file_info.is_private_key = true;
+                        file_info.algorithm = "ecdsa".to_string();
                     }
                     "DSA PRIVATE KEY" => {
-                        algorithm = "dsa";
-                        is_private_key = true;
+                        file_info.algorithm = "dsa".to_string();
+                        file_info.is_private_key = true;
                     }
                     "ENCRYPTED PRIVATE KEY" => {
-                        is_encrypted = true;
-                        is_private_key = true;
+                        file_info.is_encrypted = true;
+                        file_info.is_private_key = true;
                     }
                     _ => (),
                 }
@@ -204,21 +232,5 @@ pub fn scan<P: Permissions + PermissionsExt,
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
 
-    Ok(FileInfo {
-           algorithm: algorithm.to_string(),
-           is_directory,
-           is_encrypted,
-           is_file,
-           is_pem,
-           is_private_key,
-           is_public_key,
-           is_readable,
-           is_size_large,
-           is_size_medium,
-           is_size_small,
-           is_ssh_key,
-           path_buf,
-           pem_tag,
-           rsa_size,
-       })
+    Ok(file_info)
 }

@@ -1,6 +1,5 @@
 use std::{fmt, path};
 
-#[derive(Debug)]
 pub struct FileInfo {
     pub algorithm: String,
     pub pem_tag: String,
@@ -16,7 +15,31 @@ pub struct FileInfo {
     pub is_size_small: bool,
     pub is_ssh_key: bool,
     pub rsa_size: usize,
+    pub ed25519_point: Option<[u8; 64]>,
     pub path_buf: path::PathBuf,
+}
+
+impl FileInfo {
+    pub fn new() -> Self {
+        Self {
+            algorithm: "".to_string(),
+            ed25519_point: None,
+            is_directory: false,
+            is_encrypted: false,
+            is_file: false,
+            is_pem: false,
+            is_private_key: false,
+            is_public_key: false,
+            is_readable: false,
+            is_size_large: false,
+            is_size_medium: false,
+            is_size_small: false,
+            is_ssh_key: false,
+            path_buf: path::PathBuf::from("/"),
+            pem_tag: "".to_string(),
+            rsa_size: 0,
+        }
+    }
 }
 
 impl fmt::Display for FileInfo {
@@ -57,43 +80,33 @@ impl fmt::Display for FileInfo {
 }
 
 #[test]
-fn test_file_info_display() {
-    let file_info = FileInfo {
-        algorithm: "ed25519".to_string(),
-        pem_tag: "OPENSSH PRIVATE KEY".to_string(),
-        is_directory: false,
-        is_encrypted: true,
-        is_file: true,
-        is_pem: true,
-        is_private_key: true,
-        is_public_key: false,
-        is_readable: true,
-        is_size_large: false,
-        is_size_medium: true,
-        is_size_small: false,
-        is_ssh_key: true,
-        rsa_size: 0,
-        path_buf: path::PathBuf::from("/unit-test"),
-    };
+fn test_file_info_display_encrypted_ed25519() {
+    let mut file_info = FileInfo::new();
+    file_info.algorithm = "ed25519".to_string();
+    file_info.pem_tag = "OPENSSH PRIVATE KEY".to_string();
+    file_info.is_encrypted = true;
+    file_info.is_file = true;
+    file_info.is_pem = true;
+    file_info.is_private_key = true;
+    file_info.is_readable = true;
+    file_info.is_size_medium = true;
+    file_info.is_ssh_key = true;
+    file_info.path_buf = path::PathBuf::from("/unit-test");
     assert_eq!(format!("{}", file_info),
                "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
-    let file_info = FileInfo {
-        algorithm: "rsa".to_string(),
-        pem_tag: "".to_string(),
-        is_directory: false,
-        is_encrypted: false,
-        is_file: true,
-        is_pem: true,
-        is_private_key: false,
-        is_public_key: true,
-        is_readable: true,
-        is_size_large: false,
-        is_size_medium: true,
-        is_size_small: false,
-        is_ssh_key: true,
-        rsa_size: 0,
-        path_buf: path::PathBuf::from("/unit-test"),
-    };
+}
+
+#[test]
+fn test_file_info_display_rsa_public() {
+    let mut file_info = FileInfo::new();
+    file_info.algorithm = "rsa".to_string();
+    file_info.is_file = true;
+    file_info.is_pem = true;
+    file_info.is_public_key = true;
+    file_info.is_readable = true;
+    file_info.is_size_medium = true;
+    file_info.is_ssh_key = true;
+    file_info.path_buf = path::PathBuf::from("/unit-test");
     assert_eq!(format!("{}", file_info),
                "/unit-test\n\t✓ public ssh key (rsa)\n");
 }
