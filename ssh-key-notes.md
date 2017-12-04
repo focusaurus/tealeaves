@@ -210,3 +210,23 @@ Warning: Input is non-seekable, some functionality has been disabled.
 - compile with `gcc dumpasn1.c -o dumpasn1`
   - `mv dumpasn1 /usr/local/bin`
 - `grep -v '-' ./local/test_files/test-ssh-ed25519-1.privatekey | base64 -D > local/raw-der`
+
+- ssh ed25519 public key format is
+- ascii ssh-ed25519
+- space
+- base64 data
+  - int length
+  - ssh-ed25519 ascii
+  - int length
+  - 32 bytes payload, which should match the private key
+- space
+- comment
+
+
+- infineon USB key fob vulnerability with predictable keys
+- maybe yubikeys too
+- ed25519 public key format
+- rsa public key format
+- pairing of public/private by common value
+- matching of ascii name and name in base64 portion to detect tampering
+- matching of PEM tag ascii and info in base64 to detect PEM tag tampering

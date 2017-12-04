@@ -25,18 +25,17 @@ fn assassin() -> io::Result<()> {
                 let asn_result = yasna::parse_der(&pem.contents, |reader| {
                     reader.read_sequence(|reader| {
                         println!("reading rsa version");
-                        let _rsa_version = try!(reader.next().read_i8());
+                        let _rsa_version = reader.next().read_i8()?;
                         println!("reading modulus");
                         let modulus = try!(reader.next().read_bigint());
                         println!("modulus: {:?}", modulus.bits());
-                        let _ignore = try!(reader.next().read_bigint());
-                        let _ignore = try!(reader.next().read_bigint());
-                        let _ignore = try!(reader.next().read_bigint());
-                        let _ignore = try!(reader.next().read_bigint());
-                        let _ignore = try!(reader.next().read_bigint());
-                        let _ignore = try!(reader.next().read_bigint());
-                        let _ignore = try!(reader.next().read_bigint());
-                        // return Ok((i, b));
+                        let _ignore = reader.next().read_bigint()?;
+                        let _ignore = reader.next().read_bigint()?;
+                        let _ignore = reader.next().read_bigint()?;
+                        let _ignore = reader.next().read_bigint()?;
+                        let _ignore = reader.next().read_bigint()?;
+                        let _ignore = reader.next().read_bigint()?;
+                        let _ignore = reader.next().read_bigint()?;
                         return Ok(modulus.bits());
                     })
                 });

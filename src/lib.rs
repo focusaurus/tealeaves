@@ -74,25 +74,21 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<PrivateKey> {
 fn get_rsa_size(asn1_bytes: &[u8]) -> usize {
     let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
-            println!("reading rsa version");
-            let _rsa_version = try!(reader.next().read_i8());
-            println!("reading modulus");
-            let modulus = try!(reader.next().read_bigint());
-            println!("modulus: {:?}", modulus.bits());
-            let _ignore = try!(reader.next().read_bigint());
-            let _ignore = try!(reader.next().read_bigint());
-            let _ignore = try!(reader.next().read_bigint());
-            let _ignore = try!(reader.next().read_bigint());
-            let _ignore = try!(reader.next().read_bigint());
-            let _ignore = try!(reader.next().read_bigint());
-            let _ignore = try!(reader.next().read_bigint());
-            // return Ok((i, b));
+            let _rsa_version = reader.next().read_i8()?;
+            let modulus = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
+            let _ignore = reader.next().read_bigint()?;
             return Ok(modulus.bits());
         })
     });
     match asn_result {
         Ok(bits) => return bits,
-        Err(message) => return 0,
+        Err(_) => return 0,
     }
 
 }
