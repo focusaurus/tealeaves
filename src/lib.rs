@@ -72,7 +72,7 @@ fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
-fn get_rsa_size(asn1_bytes: &[u8]) -> usize {
+fn get_rsa_length(asn1_bytes: &[u8]) -> usize {
     let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _rsa_version = reader.next().read_i8()?;
@@ -80,19 +80,46 @@ fn get_rsa_size(asn1_bytes: &[u8]) -> usize {
             // We don't need anything else but yasna panics if we leave
             // unparsed data at the end of the file
             // so just read them all in
-            let _pub_exp = reader.next().read_bigint()?;
-            let _priv_exp = reader.next().read_bigint()?;
-            let _prime1 = reader.next().read_bigint()?;
-            let _prime2 = reader.next().read_bigint()?;
-            let _exp1 = reader.next().read_bigint()?;
-            let _exp2 = reader.next().read_bigint()?;
-            let _coefficient = reader.next().read_bigint()?;
+            // For the record they are
+            // _pub_exp
+            // _priv_exp
+            // _prime1
+            // _prime2
+            // _exp1
+            // _exp2
+            // _coefficient
+            for _ in 0..7 {
+                let _int = reader.next().read_bigint()?;
+            }
             return Ok(modulus.bits());
         })
     });
     match asn_result {
         Ok(bits) => return bits,
         Err(_) => return 0,
+    }
+}
+
+fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
+    let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
+        reader.read_sequence(|reader| {
+            let _int1 = reader.next().read_i8()?;
+            let int2 = reader.next().read_bigint()?;
+            // We don't need anything else but yasna panics if we leave
+            // unparsed data at the end of the file
+            // so just read them all in
+            for _ in 0..4 {
+                let _int = reader.next().read_bigint()?;
+            }
+            return Ok(int2.bits());
+        })
+    });
+    match asn_result {
+        Ok(bits) => return bits,
+        Err(error) => {
+            println!("HEY {}", error);
+            return 0;
+        }
     }
 
 }
@@ -128,6 +155,25 @@ fn identify_rsa_public(content: &str) -> io::Result<file_info::SshKey> {
     let modulus = read_field(&mut reader).unwrap_or(vec![]);
     // modulus has a leading zero byte to be discarded, then just convert bytes to bits
     ssh_key.key_length = Some((modulus.len() - 1) * 8);
+    Ok(ssh_key)
+}
+
+fn identify_dsa_public(content: &str) -> io::Result<file_info::SshKey> {
+    let mut ssh_key = file_info::SshKey::new();
+    ssh_key.is_public = true;
+    let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
+    let label = iterator.next().unwrap_or("").to_string();
+    let payload = iterator.next().unwrap_or(""); // base64
+    ssh_key.comment = Some(iterator.next().unwrap_or("").to_string());
+    let payload = base64::decode(payload).unwrap_or(vec![]); // binary
+    let mut reader = io::BufReader::new(payload.as_slice());
+    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+    if String::from_utf8(algorithm.clone()).unwrap_or(label) == "ssh-dss" {
+        ssh_key.algorithm = Some("dsa".to_string());
+    }
+    let field = read_field(&mut reader).unwrap_or(vec![]);
+    // field has a leading zero byte to be discarded, then just convert bytes to bits
+    ssh_key.key_length = Some((field.len() - 1) * 8);
     Ok(ssh_key)
 }
 
@@ -175,10 +221,11 @@ pub fn scan<P: Permissions + PermissionsExt,
             file_info.ssh_key = Some(identify_rsa_public(&content)?);
         }
         if content.starts_with("ssh-dss ") {
-            let mut ssh_key = file_info::SshKey::new();
-            ssh_key.is_public = true;
-            ssh_key.algorithm = Some("dsa".to_string());
-            file_info.ssh_key = Some(ssh_key);
+            file_info.ssh_key = Some(identify_dsa_public(&content)?);
+            // let mut ssh_key = file_info::SshKey::new();
+            // ssh_key.is_public = true;
+            // ssh_key.algorithm = Some("dsa".to_string());
+            // file_info.ssh_key = Some(ssh_key);
         }
         if content.starts_with("ecdsa-sha2-nistp256 ") {
             let mut ssh_key = file_info::SshKey::new();
@@ -208,7 +255,7 @@ pub fn scan<P: Permissions + PermissionsExt,
                         let mut ssh_key = file_info::SshKey::new();
                         ssh_key.is_public = false;
                         ssh_key.algorithm = Some("rsa".to_string());
-                        ssh_key.key_length = Some(get_rsa_size(&pem.contents));
+                        ssh_key.key_length = Some(get_rsa_length(&pem.contents));
                         file_info.ssh_key = Some(ssh_key);
                     }
                     "EC PRIVATE KEY" => {
@@ -221,6 +268,7 @@ pub fn scan<P: Permissions + PermissionsExt,
                         let mut ssh_key = file_info::SshKey::new();
                         ssh_key.is_public = false;
                         ssh_key.algorithm = Some("dsa".to_string());
+                        ssh_key.key_length = Some(get_dsa_length(&pem.contents));
                         file_info.ssh_key = Some(ssh_key);
                     }
                     "ENCRYPTED PRIVATE KEY" => {

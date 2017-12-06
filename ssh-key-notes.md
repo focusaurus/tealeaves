@@ -212,7 +212,142 @@ dca7653a4ee4ed47b7fd163565263831
 ab5d17d6450a85341a73347868f619bc
 36a5b6ac38fd6b1e1c45839ea3df3fbe
 475
-``` ## References
+```
+## dsa private key
+
+```
+  0 442: SEQUENCE {
+  4   1:   INTEGER 0
+  7 129:   INTEGER
+       :     00 BD 04 0D 45 22 2C 81 63 3A A1 E3 BC 9F 1B 33
+       :     9F 6C 1D 95 AD 2C 69 50 A1 5D 37 DA C8 63 96 C4
+       :     BF 85 09 6E C7 CB 64 26 34 4C 87 B5 56 15 4B 7D
+       :     90 E5 6A 7D E4 DC 84 A1 1D 19 51 8F B4 A6 F4 88
+       :     C7 3F 80 66 82 B9 25 FA 3D 04 39 35 24 53 58 30
+       :     23 3E 87 E9 AF 3D 8B 02 2F 59 C1 64 A1 F2 8E EC
+       :     FA C7 E8 64 1E FC 24 43 BC 3D 06 AF EE 41 27 17
+       :     15 89 67 59 F4 D9 DE 0D E0 11 DA 92 FE D0 EB 61
+       :     C9
+139  21:   INTEGER 00 C6 44 1F 38 B5 4F 56 D3 91 19 0F 0C EF 79 5B 5B C8 48 99 49
+162 128:   INTEGER
+       :     70 23 6F AB D6 A4 D3 20 82 A0 9A B9 0D E3 30 E1
+       :     61 BF 19 8F A2 88 68 8C 29 14 11 56 53 4A 31 6D
+       :     49 BA 17 AF 40 CE 63 84 67 5F 47 69 23 A1 92 DB
+       :     3C 15 7F 57 D0 18 92 C0 B8 6B B0 C2 A1 D1 7A B7
+       :     B8 B6 7A 4C CE 7C B1 44 E6 23 AE B6 9B 8C 62 11
+       :     E9 F4 0A 56 21 E1 AB 60 2B CF DD 77 85 6D 81 EC
+       :     CB A2 8D 90 55 A9 5C C7 02 CD 06 7E 41 5E 04 FE
+       :     42 0F 41 F7 ED F7 F4 02 99 D4 B7 89 C7 23 58 E8
+293 128:   INTEGER
+       :     75 8E 32 AC A3 F4 1A ED 64 7C 0C 5F 12 9B C7 1A
+       :     FD 28 67 BC 1C AC BB 02 0F 9F FA 1A 4B 48 AC F5
+       :     76 99 24 6C 2B 9D 2C CC D1 5A 62 13 E1 18 F1 65
+       :     B9 09 15 56 D3 A5 70 0E 7E 27 90 51 5B B3 4B C7
+       :     77 A2 40 AA 15 06 9A 0C 85 D4 E2 EA 72 FC F0 72
+       :     5E F2 B9 B4 82 82 05 21 E8 4C 33 6C 34 A6 3C 73
+       :     BD BF F8 50 A7 5E 4B 6D C7 53 27 D8 9E A7 84 6D
+       :     5E 76 39 38 7E 13 48 D1 2B 46 8B 89 68 9C 3C BD
+424  20:   INTEGER 66 D5 97 A1 4D D5 DB 58 8D 95 FB 6B E9 AA C4 50 92 4C EA C3
+       :   }
+```
+```
+308201ba0201
+00028181
+00bd040d45222c81633aa1e3bc9f1b339f6c1d95
+ad2c6950a15d37dac86396c4bf85096ec7cb6426344c87b556154b7d90e5
+6a7de4dc84a11d19518fb4a6f488c73f806682b925fa3d04393524535830
+233e87e9af3d8b022f59c164a1f28eecfac7e8641efc2443bc3d06afee41
+271715896759f4d9de0de011da92fed0eb
+61c90215
+00c6441f38b54f56d3
+91190f0cef795b5bc848994902818070236fabd6a4d32082a09ab90de330
+e161bf198fa288688c29141156534a316d49ba17af40ce6384675f476923
+a192db3c157f57d01892c0b86bb0c2a1d17ab7b8b67a4cce7cb144e623ae
+b69b8c6211e9f40a5621e1ab602bcfdd77856d81eccba28d9055a95cc702
+cd067e415e04fe420f41f7edf7f40299d4b789c72358e8028180758e32ac
+a3f41aed647c0c5f129bc71afd2867bc1cacbb020f9ffa1a4b48acf57699
+246c2b9d2cccd15a6213e118f165b9091556d3a5700e7e2790515bb34bc7
+77a240aa15069a0c85d4e2ea72fcf0725ef2b9b482820521e84c336c34a6
+3c73bdbff850a75e4b6dc75327d89ea7846d5e7639387e1348d12b468b89
+689c3cbd021466d597a14dd5db588d95fb6be9aac450924ceac3
+```
+
+## dsa public key
+
+```
+00000007 int length = 7
+7373682d647373 string = ssh-dss
+00000081 int length = 129
+00bd040d45222c81633aa1e3bc9f1b33
+9f6c1d95ad2c6950a15d37dac86396c4
+bf85096ec7cb6426344c87b556154b7d
+90e56a7de4dc84a11d19518fb4a6f488
+c73f806682b925fa3d04393524535830
+233e87e9af3d8b022f59c164a1f28eec
+fac7e8641efc2443bc3d06afee412717
+15896759f4d9de0de011da92fed0eb61
+c9
+
+00000015 int length = 21
+
+00c6441f38b54f56d391190f0cef795b
+5bc8489949
+
+00000080 int length = 128
+
+70236fabd6a4d32082a09ab90de330e1
+61bf198fa288688c29141156534a316d
+49ba17af40ce6384675f476923a192db
+3c157f57d01892c0b86bb0c2a1d17ab7
+b8b67a4cce7cb144e623aeb69b8c6211
+e9f40a5621e1ab602bcfdd77856d81ec
+cba28d9055a95cc702cd067e415e04fe
+420f41f7edf7f40299d4b789c72358e8
+
+00000080 int length = 128
+
+758e32aca3f41aed647c0c5f129bc71a
+fd2867bc1cacbb020f9ffa1a4b48acf5
+7699246c2b9d2cccd15a6213e118f165
+b9091556d3a5700e7e2790515bb34bc7
+77a240aa15069a0c85d4e2ea72fcf072
+5ef2b9b482820521e84c336c34a63c73
+bdbff850a75e4b6dc75327d89ea7846d
+5e7639387e1348d12b468b89689c3cbd
+```
+## ecdsa private key
+This seems to be a PEM wrapper then ASN.1
+```
+  0 119: SEQUENCE {
+  2   1:   INTEGER 1
+  5  32:   OCTET STRING
+       :     CE EE 48 65 6A B4 F6 A2 FE F4 3D DB D1 7C 99 06
+       :     4A E6 3B 52 D0 72 4C 30 A9 BA E4 76 3E 26 FE C1
+ 39  10:   [0] {
+ 41   8:     OBJECT IDENTIFIER prime256v1 (1 2 840 10045 3 1 7)
+       :     }
+ 51  68:   [1] {
+ 53  66:     BIT STRING
+       :       04 B0 A4 CA 7F 39 24 83 78 2C 38 91 F6 23 36 0C
+       :       B8 AF EE 7F 86 55 96 C2 01 1B 36 8F 91 02 F0 5E
+       :       B1 7D 69 E2 14 8C E0 51 45 55 14 8B 43 5B 95 4E
+       :       06 90 DA 7D CB DF 79 26 9A 8F B9 B0 FF 49 FE 40
+       :       C0
+       :     }
+       :   }
+```
+
+```
+30770201010420ceee48656ab4f6a2fe
+f43ddbd17c99064ae63b52d0724c30a9
+bae4763e26fec1a00a06082a8648ce3d
+030107a14403420004b0a4ca7f392483
+782c3891f623360cb8afee7f865596c2
+011b368f9102f05eb17d69e2148ce051
+4555148b435b954e0690da7dcbdf7926
+9a8fb9b0ff49fe40c0
+```
+## References
 
 - [RFC 4716](https://tools.ietf.org/html/rfc4716) supposedly the ssh public key file format, but my ssh-keygen on macOS 10.13 does not generate this format by default.
 - PKCS8
@@ -223,6 +358,7 @@ ab5d17d6450a85341a73347868f619bc
 - https://peterlyons.com/problog/2017/12/openssh-ed25519-private-key-file-format
 - https://etherhack.co.uk/asymmetric/docs/rsa_key_breakdown.html
 - https://crypto.stackexchange.com/a/21104
+- https://security.stackexchange.com/a/46781/67167
 
 ## Stream of consciousness notes to organize later
 - `brew install asn1c`
