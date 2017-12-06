@@ -187,7 +187,32 @@ Warning: Input is non-seekable, some functionality has been disabled.
 0 warnings, 0 errors.
 ```
 
-## References
+## rsa public key
+```
+cat files/ssh-06-rsa-public-key.pem | cut -d " " -f 2 | base64 -D | xxd -p
+00000007 int length = 7
+7373682d727361 string = "ssh-rsa"
+00000003 int length = 3
+010001 int public exponent = 65537
+00000101 int length = 257 (1 null byte then 256)
+00b05b1f8c8696a3bf79ef56cfef83af
+b7a8de4a43e0c2f1fce7a6b1f0fec2aa
+07880c46cdf1 44278dbde60f597aed4
+f97f50abeb85addd1eedf576cb21277b
+838bec27d39ee581b75acc8cdf3fcb1a
+a9decb20810c5850cd33d251eb7718d3
+eaa716da9293636227895446c31c486a
+5bf4b0ae84c6fae6b9e209962e703750
+bc4b8008acb65bfb52d4f4bc990ed97a
+ff39e77d34d3da612b9945e60ea0b991
+44bba6c44a4ffb416b4c64b8065be443
+2588cf45aaeab23ffd78db34c522b51a
+dca7653a4ee4ed47b7fd163565263831
+709b82779206c4d9481e3b5c24de34fc
+ab5d17d6450a85341a73347868f619bc
+36a5b6ac38fd6b1e1c45839ea3df3fbe
+475
+``` ## References
 
 - [RFC 4716](https://tools.ietf.org/html/rfc4716) supposedly the ssh public key file format, but my ssh-keygen on macOS 10.13 does not generate this format by default.
 - PKCS8
@@ -225,8 +250,5 @@ Warning: Input is non-seekable, some functionality has been disabled.
 
 - infineon USB key fob vulnerability with predictable keys
 - maybe yubikeys too
-- ed25519 public key format
-- rsa public key format
-- pairing of public/private by common value
 - matching of ascii name and name in base64 portion to detect tampering
 - matching of PEM tag ascii and info in base64 to detect PEM tag tampering
