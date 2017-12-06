@@ -5,15 +5,13 @@ extern crate rsfs;
 extern crate yasna;
 mod file_info;
 use byteorder::{BigEndian, ReadBytesExt};
-use file_info::FileInfo3 as FileInfo;
+use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
 use std::io;
 use std::io::{ErrorKind, Read};
 use std::path::{PathBuf, Path};
-
-
 
 fn bail(message: String) -> io::Error {
     return io::Error::new(ErrorKind::Other, message);

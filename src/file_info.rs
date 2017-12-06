@@ -1,24 +1,5 @@
 use std::{fmt, path};
 
-pub struct FileInfo {
-    pub algorithm: String,
-    pub pem_tag: String,
-    pub is_directory: bool,
-    pub is_encrypted: bool,
-    pub is_file: bool,
-    pub is_pem: bool,
-    pub is_private_key: bool,
-    pub is_public_key: bool,
-    pub is_readable: bool,
-    pub is_size_large: bool,
-    pub is_size_medium: bool,
-    pub is_size_small: bool,
-    pub is_ssh_key: bool,
-    pub rsa_size: usize,
-    pub ed25519_point: Option<[u8; 64]>,
-    pub path_buf: path::PathBuf,
-}
-
 pub struct SshKey {
     pub algorithm: Option<String>,
     pub comment: Option<String>,
@@ -52,12 +33,14 @@ impl fmt::Display for SshKey {
         output.push_str("ssh key (");
         if self.algorithm.is_some() {
             output.push_str(self.algorithm.as_ref().unwrap());
-            output.push_str(", ");
         }
-        if self.is_encrypted {
-            output.push_str("encrypted");
-        } else {
-            output.push_str("not encrypted");
+        if !self.is_public {
+            output.push_str(", ");
+            if self.is_encrypted {
+                output.push_str("encrypted");
+            } else {
+                output.push_str("not encrypted");
+            }
         }
         if self.key_length.is_some() {
             output.push_str(&format!(", {} bits", self.key_length.unwrap()));
@@ -67,7 +50,7 @@ impl fmt::Display for SshKey {
     }
 }
 
-pub struct FileInfo3 {
+pub struct FileInfo {
     pub pem_tag: String,
     pub is_directory: bool,
     pub is_file: bool,
@@ -80,7 +63,7 @@ pub struct FileInfo3 {
     pub path_buf: path::PathBuf,
 }
 
-impl FileInfo3 {
+impl FileInfo {
     pub fn new() -> Self {
         Self {
             is_directory: false,
@@ -97,7 +80,7 @@ impl FileInfo3 {
     }
 }
 
-impl fmt::Display for FileInfo3 {
+impl fmt::Display for FileInfo {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         if self.is_directory {
@@ -115,23 +98,27 @@ impl fmt::Display for FileInfo3 {
         } else if !self.is_readable {
             output.push_str("\t🔥 missing read permission\n");
         }
-        write!(out, "{}\n{}", self.path_buf.to_str().unwrap_or("/"), output)
+        write!(out,
+               "{}\n{}\n",
+               self.path_buf.to_str().unwrap_or("/"),
+               output)
     }
 }
-/*
+
 #[test]
 fn test_file_info_display_encrypted_ed25519() {
     let mut file_info = FileInfo::new();
-    file_info.algorithm = "ed25519".to_string();
+    file_info.path_buf = path::PathBuf::from("/unit-test");
     file_info.pem_tag = "OPENSSH PRIVATE KEY".to_string();
-    file_info.is_encrypted = true;
     file_info.is_file = true;
     file_info.is_pem = true;
-    file_info.is_private_key = true;
     file_info.is_readable = true;
     file_info.is_size_medium = true;
-    file_info.is_ssh_key = true;
-    file_info.path_buf = path::PathBuf::from("/unit-test");
+    let mut ssh_key = SshKey::new();
+    ssh_key.algorithm = Some("ed25519".to_string());
+    ssh_key.is_public = false;
+    ssh_key.is_encrypted = true;
+    file_info.ssh_key = Some(ssh_key);
     assert_eq!(format!("{}", file_info),
                "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
 }
@@ -139,15 +126,15 @@ fn test_file_info_display_encrypted_ed25519() {
 #[test]
 fn test_file_info_display_rsa_public() {
     let mut file_info = FileInfo::new();
-    file_info.algorithm = "rsa".to_string();
+    file_info.path_buf = path::PathBuf::from("/unit-test");
     file_info.is_file = true;
     file_info.is_pem = true;
-    file_info.is_public_key = true;
     file_info.is_readable = true;
     file_info.is_size_medium = true;
-    file_info.is_ssh_key = true;
-    file_info.path_buf = path::PathBuf::from("/unit-test");
-    assert_eq!(format!("{}", file_info),
-               "/unit-test\n\t✓ public ssh key (rsa)\n");
+    let mut ssh_key = SshKey::new();
+    ssh_key.algorithm = Some("rsa".to_string());
+    ssh_key.is_public = true;
+    file_info.ssh_key = Some(ssh_key);
+    assert_eq!("/unit-test\n\t✓ public ssh key (rsa)\n",
+               format!("{}", file_info));
 }
-*/
