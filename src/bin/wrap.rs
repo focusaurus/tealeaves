@@ -1,11 +1,8 @@
 extern crate pem;
 extern crate yasna;
-use std::env;
-use std::fs;
 use std::io;
 use std::io::Read;
 use std::iter::Iterator;
-use std::error::Error;
 
 fn assassin() -> io::Result<()> {
     let mut file = std::io::stdin();

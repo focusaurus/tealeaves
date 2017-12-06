@@ -9,6 +9,7 @@ use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
+use std::error::Error;
 use std::io;
 use std::io::{ErrorKind, Read};
 use std::path::{PathBuf, Path};
@@ -114,35 +115,45 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
             return Ok(int2.bits());
         })
     });
+    // FIXME yasna::ASN1Error handling
     match asn_result {
         Ok(bits) => return bits,
-        Err(error) => return 0,
+        Err(_) => return 0,
     }
 
 }
 
-fn get_ecdsa_length(asn1_bytes: &[u8]) -> usize {
+fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _ = reader.next().read_i8()?;
             let _ = reader.next().read_bytes()?;
-            let oid2 = reader.next().read_tagged(yasna::Tag::context(0), |reader| { reader.read_oid()});
-            println!("HEY OID{:?}", oid2);
-            let oid2 = reader.next().read_tagged(yasna::Tag::context(1), |reader| { reader.read_bitvec()});
-            // let oid = reader.next().read_oid()?;
-            // We don't need anything else but yasna panics if we leave
-            // unparsed data at the end of the file
-            // so just read them all in
-            // let _ = reader.next().read_bytes()?;
-            // println!("ecdsa OID {:?}", oid);
-            return Ok(521);
+            let oid = reader
+                .next()
+                .read_tagged(yasna::Tag::context(0), |reader| reader.read_oid())
+                .unwrap();
+            let _discard = reader
+                .next()
+                .read_tagged(yasna::Tag::context(1), |reader| reader.read_bitvec());
+
+            if &oid.components().as_slice() == &[1u64, 2, 840, 10045, 3, 1, 7] {
+                return Ok(256);
+            }
+            if &oid.components().as_slice() == &[1u64, 3, 132, 0, 34] {
+                return Ok(384);
+            }
+            if &oid.components().as_slice() == &[1u64, 3, 132, 0, 35] {
+                return Ok(521);
+            }
+
+            return Ok(0);
         })
     });
     match asn_result {
-        Ok(bits) => return bits,
+        Ok(0) => return Err("Unrecognized ecdsa curve".to_string()),
+        Ok(bits) => return Ok(bits),
         Err(error) => {
-            println!("HEY {:?}", error);
-            return 0;
+            return Err(error.description().to_string());
         }
     }
 }
@@ -244,10 +255,6 @@ pub fn scan<P: Permissions + PermissionsExt,
         }
         if content.starts_with("ssh-dss ") {
             file_info.ssh_key = Some(identify_dsa_public(&content)?);
-            // let mut ssh_key = file_info::SshKey::new();
-            // ssh_key.is_public = true;
-            // ssh_key.algorithm = Some("dsa".to_string());
-            // file_info.ssh_key = Some(ssh_key);
         }
         if content.starts_with("ecdsa-sha2-nistp256 ") {
             let mut ssh_key = file_info::SshKey::new();
@@ -262,15 +269,8 @@ pub fn scan<P: Permissions + PermissionsExt,
                 file_info.pem_tag = pem.tag.to_string();
                 match pem.tag.as_str() {
                     "OPENSSH PRIVATE KEY" => {
-                        // file_info.algorithm = "ed25519".to_string();
-                        // file_info.is_private_key = true;
                         if has_prefix(b"openssh-key-v1", &pem.contents) {
                             file_info.ssh_key = Some(identify_openssh_v1(pem.contents)?);
-                            // file_info.is_encrypted = details.encrypted;
-                            // match details.algorithm {
-                            //     Some(name) => file_info.algorithm = name.to_string(),
-                            //     _ => (),
-                            // }
                         }
                     }
                     "RSA PRIVATE KEY" => {
@@ -284,7 +284,11 @@ pub fn scan<P: Permissions + PermissionsExt,
                         let mut ssh_key = file_info::SshKey::new();
                         ssh_key.is_public = false;
                         ssh_key.algorithm = Some("ecdsa".to_string());
-                        ssh_key.key_length = Some(get_ecdsa_length(&pem.contents));
+                        let result = get_ecdsa_length(&pem.contents);
+                        if result.is_err() {
+                            // FIXME attach err to ssh_key struct for later printing
+                        }
+                        ssh_key.key_length = result.ok();
                         file_info.ssh_key = Some(ssh_key);
                     }
                     "DSA PRIVATE KEY" => {

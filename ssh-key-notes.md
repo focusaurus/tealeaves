@@ -388,3 +388,5 @@ bae4763e26fec1a00a06082a8648ce3d
 - maybe yubikeys too
 - matching of ascii name and name in base64 portion to detect tampering
 - matching of PEM tag ascii and info in base64 to detect PEM tag tampering
+
+dump-ssh-key files/ssh-01-ed25519-private-key.pem | tr -d '\n' | fold -w 32

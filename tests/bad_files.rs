@@ -104,9 +104,10 @@ fn pem_long_field_gets_detected() {
     let mut pem = fs.create_file("/tmp/pem-too-long-field").unwrap();
     // Here's the hex of the start of a valid openssh-key-v1, but the first field length
     // is 4097 (00001001 in hex) which is above 4096 safe limit we will read
-    //                           4097 length:  00001001
-    let bogus = "6f70656e7373682d6b65792d76310000001001";
-    let bin = hex::decode(bogus).unwrap();
+    let valid_prefix = "6f70656e7373682d6b65792d763100";
+    //    4097 length:  00001001
+    let bogus_length = "00001001";
+    let bin = hex::decode([valid_prefix, bogus_length].concat()).unwrap();
     let base64 = base64::encode(&bin);
     pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n");
     pem.write(base64.as_bytes());
