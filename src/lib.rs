@@ -116,14 +116,36 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
     });
     match asn_result {
         Ok(bits) => return bits,
-        Err(error) => {
-            println!("HEY {}", error);
-            return 0;
-        }
+        Err(error) => return 0,
     }
 
 }
 
+fn get_ecdsa_length(asn1_bytes: &[u8]) -> usize {
+    let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
+        reader.read_sequence(|reader| {
+            let _ = reader.next().read_i8()?;
+            let _ = reader.next().read_bytes()?;
+            let oid2 = reader.next().read_tagged(yasna::Tag::context(0), |reader| { reader.read_oid()});
+            println!("HEY OID{:?}", oid2);
+            let oid2 = reader.next().read_tagged(yasna::Tag::context(1), |reader| { reader.read_bitvec()});
+            // let oid = reader.next().read_oid()?;
+            // We don't need anything else but yasna panics if we leave
+            // unparsed data at the end of the file
+            // so just read them all in
+            // let _ = reader.next().read_bytes()?;
+            // println!("ecdsa OID {:?}", oid);
+            return Ok(521);
+        })
+    });
+    match asn_result {
+        Ok(bits) => return bits,
+        Err(error) => {
+            println!("HEY {:?}", error);
+            return 0;
+        }
+    }
+}
 fn identify_ed25519_public(content: &str) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
@@ -262,6 +284,7 @@ pub fn scan<P: Permissions + PermissionsExt,
                         let mut ssh_key = file_info::SshKey::new();
                         ssh_key.is_public = false;
                         ssh_key.algorithm = Some("ecdsa".to_string());
+                        ssh_key.key_length = Some(get_ecdsa_length(&pem.contents));
                         file_info.ssh_key = Some(ssh_key);
                     }
                     "DSA PRIVATE KEY" => {
