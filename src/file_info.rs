@@ -34,6 +34,9 @@ impl fmt::Display for SshKey {
         if self.algorithm.is_some() {
             output.push_str(self.algorithm.as_ref().unwrap());
         }
+        if self.key_length.is_some() {
+            output.push_str(&format!(", {} bits", self.key_length.unwrap()));
+        }
         if !self.is_public {
             output.push_str(", ");
             if self.is_encrypted {
@@ -41,9 +44,6 @@ impl fmt::Display for SshKey {
             } else {
                 output.push_str("not encrypted");
             }
-        }
-        if self.key_length.is_some() {
-            output.push_str(&format!(", {} bits", self.key_length.unwrap()));
         }
         output.push_str(")");
         write!(out, "{}", output)
@@ -122,6 +122,24 @@ fn test_file_info_display_encrypted_ed25519() {
     assert_eq!(format!("{}", file_info),
                "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
 }
+#[test]
+fn test_file_info_display_encrypted_ecdsa() {
+    let mut file_info = FileInfo::new();
+    file_info.path_buf = path::PathBuf::from("/unit-test");
+    file_info.pem_tag = "EC PRIVATE KEY".to_string();
+    file_info.is_file = true;
+    file_info.is_pem = true;
+    file_info.is_readable = true;
+    file_info.is_size_medium = true;
+    let mut ssh_key = SshKey::new();
+    ssh_key.algorithm = Some("ecdsa".to_string());
+    ssh_key.is_public = false;
+    ssh_key.is_encrypted = false;
+    ssh_key.key_length = Some(384);
+    file_info.ssh_key = Some(ssh_key);
+    assert_eq!(format!("{}", file_info),
+               "/unit-test\n\t✓ private ssh key (ecdsa, 384 bits, not encrypted)\n");
+}
 
 #[test]
 fn test_file_info_display_rsa_public() {
@@ -134,7 +152,8 @@ fn test_file_info_display_rsa_public() {
     let mut ssh_key = SshKey::new();
     ssh_key.algorithm = Some("rsa".to_string());
     ssh_key.is_public = true;
+    ssh_key.key_length = Some(2048);
     file_info.ssh_key = Some(ssh_key);
-    assert_eq!("/unit-test\n\t✓ public ssh key (rsa)\n",
+    assert_eq!("/unit-test\n\t✓ public ssh key (rsa, 2048 bits)\n",
                format!("{}", file_info));
 }
