@@ -11,7 +11,7 @@ fn assassin() -> io::Result<()> {
     let content: String = content.chars().filter(|c| !c.is_whitespace()).collect();
     for (index, character) in content.chars().enumerate() {
         print!("{}", character);
-        if (index + 1) % 32 ==  0 {
+        if (index + 1) % 32 == 0 {
             println!("");
         }
     }

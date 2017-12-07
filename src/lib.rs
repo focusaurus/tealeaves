@@ -1,6 +1,5 @@
 extern crate base64;
 extern crate byteorder;
-extern crate pem;
 extern crate rsfs;
 extern crate yasna;
 mod file_info;
@@ -41,7 +40,7 @@ fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
 struct Pem {
     pub tag: String,
     pub headers: Vec<String>,
-    pub body: String,
+    pub body: Vec<u8>,
 }
 
 fn parse_pem(pem: &str) -> Pem {
@@ -77,7 +76,7 @@ fn parse_pem(pem: &str) -> Pem {
         headers = vec![];
     }
     body.pop(); // discard pem_footer
-    let body = body.concat();
+    let body = base64::decode(&body.concat()).unwrap();
     Pem {
         tag: pem_header.to_string(),
         headers,
@@ -85,7 +84,7 @@ fn parse_pem(pem: &str) -> Pem {
     }
 }
 
-fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<file_info::SshKey> {
+fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     /*
     byte[]	AUTH_MAGIC
     string	ciphername
@@ -165,7 +164,10 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
     // FIXME yasna::ASN1Error handling
     match asn_result {
         Ok(bits) => return bits,
-        Err(_) => return 0,
+        Err(error) => {
+            //print!("ERROR {}", error);
+            return 0;
+        },
     }
 }
 
@@ -175,9 +177,9 @@ fn identify_dsa_private(bytes: Vec<u8>) -> io::Result<file_info::SshKey> {
     ssh_key.is_public = false;
     // let mut reader = io::Cursor::new(&bytes);
     let ascii = String::from_utf8(bytes).unwrap_or("".to_string());
-    for line in ascii.lines().skip(1) {
-        println!("LINE {}", line);
-    }
+    // for line in ascii.lines().skip(1) {
+    //     println!("LINE {}", line);
+    // }
     Ok(ssh_key)
 }
 
@@ -332,9 +334,6 @@ pub fn scan<P: Permissions + PermissionsExt,
         let mut file = fs.open_file(path)?;
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
-        println!("byte length: {}", bytes.len());
-
-        // file.read_to_string(&mut content)?;
         if bytes.starts_with(b"ssh-ed25519 ") {
             file_info.ssh_key = Some(identify_ed25519_public(&content)?);
         }
@@ -349,89 +348,53 @@ pub fn scan<P: Permissions + PermissionsExt,
         }
         if bytes.starts_with(b"-----BEGIN ") {
             let pem = parse_pem(&String::from_utf8_lossy(&bytes));
-            println!("PEM: {:?}", pem);
-            // let mut message = Vec::with_capacity(bytes.len());
-            // let mut lines = vec![];
-            //
-            // for (index, &byte) in bytes.iter().enumerate() {
-            //     if byte == b"\n"[0] {
-            //         lines.push(index);
-            //     }
-            // }
-            // println!("lines {:?}", lines);
-            // let start = lines.first().unwrap();
-            // let mut end = lines.last().unwrap();
-            // if *end == bytes.len() - 1 {
-            //     end = &lines[lines.len() - 2];
-            // }
-            // // println!("{:?} {}", start, end);
-            // for (index, &byte) in bytes.iter().enumerate() {
-            //     if index >= *start && index < *end {
-            //         // print!("{:x}", byte);
-            //         message.push(byte);
-            //     }
-            // }
-            // let x = mailparse::parse_mail(&message);
-            // println!("mailparse {:?}", x);
-            // let content = String::from_utf8(&content);
-            // let mut bytes = vec![];
-            // let mut lines: Vec<&str> = content.lines().skip(1).collect();
-            // lines.pop(); // discard PEM footer
-            // for line in lines {
-            //     bytes.append(line.to_string().as_bytes());
-            // }
-            // // let message: [&str] = lines.into_iter().collect();
-            // // let message = mailparse::parse_mail(&);
-            // for line in lines {
-            //     println!("LINE {:?}", line);
-            // }
-        }
-        let parsed_result = pem::parse(content);
-        match parsed_result {
-            Ok(pem) => {
-                file_info.is_pem = true;
-                file_info.pem_tag = pem.tag.to_string();
-                match pem.tag.as_str() {
-                    "OPENSSH PRIVATE KEY" => {
-                        if has_prefix(b"openssh-key-v1", &pem.contents) {
-                            file_info.ssh_key = Some(identify_openssh_v1(pem.contents)?);
-                        }
+            file_info.is_pem = true;
+            file_info.pem_tag = pem.tag.to_string();
+
+            match pem.tag.as_str() {
+                "OPENSSH PRIVATE KEY" => {
+                    if has_prefix(&pem.body, b"openssh-key-v1") {
+                        file_info.ssh_key = Some(identify_openssh_v1(&pem.body)?);
                     }
-                    "RSA PRIVATE KEY" => {
-                        let mut ssh_key = file_info::SshKey::new();
-                        ssh_key.is_public = false;
-                        ssh_key.algorithm = Some("rsa".to_string());
-                        ssh_key.key_length = Some(get_rsa_length(&pem.contents));
-                        file_info.ssh_key = Some(ssh_key);
-                    }
-                    "EC PRIVATE KEY" => {
-                        let mut ssh_key = file_info::SshKey::new();
-                        ssh_key.is_public = false;
-                        ssh_key.algorithm = Some("ecdsa".to_string());
-                        let result = get_ecdsa_length(&pem.contents);
-                        if result.is_err() {
-                            // FIXME attach err to ssh_key struct for later printing
-                        }
-                        ssh_key.key_length = result.ok();
-                        file_info.ssh_key = Some(ssh_key);
-                    }
-                    "DSA PRIVATE KEY" => {
-                        let mut ssh_key = file_info::SshKey::new();
-                        ssh_key.is_public = false;
-                        ssh_key.algorithm = Some("dsa".to_string());
-                        ssh_key.key_length = Some(get_dsa_length(&pem.contents));
-                        file_info.ssh_key = Some(ssh_key);
-                    }
-                    "ENCRYPTED PRIVATE KEY" => {
-                        let mut ssh_key = file_info::SshKey::new();
-                        ssh_key.is_public = false;
-                        ssh_key.is_encrypted = true;
-                        file_info.ssh_key = Some(ssh_key);
-                    }
-                    _ => (),
                 }
+                "RSA PRIVATE KEY" => {
+                    let mut ssh_key = file_info::SshKey::new();
+                    ssh_key.is_public = false;
+                    ssh_key.algorithm = Some("rsa".to_string());
+                    ssh_key.key_length = Some(get_rsa_length(&pem.body));
+                    file_info.ssh_key = Some(ssh_key);
+                }
+                "EC PRIVATE KEY" => {
+                    let mut ssh_key = file_info::SshKey::new();
+                    ssh_key.is_public = false;
+                    ssh_key.algorithm = Some("ecdsa".to_string());
+                    let result = get_ecdsa_length(&pem.body);
+                    if result.is_err() {
+                        // FIXME attach err to ssh_key struct for later printing
+                    }
+                    ssh_key.key_length = result.ok();
+                    file_info.ssh_key = Some(ssh_key);
+                }
+                "DSA PRIVATE KEY" => {
+                    let mut ssh_key = file_info::SshKey::new();
+                    ssh_key.is_public = false;
+                    ssh_key.algorithm = Some("dsa".to_string());
+                    ssh_key.is_encrypted = pem.headers
+                        .iter()
+                        .any(|header| header.ends_with(",ENCRYPTED"));
+                    if !ssh_key.is_encrypted {
+                        ssh_key.key_length = Some(get_dsa_length(&pem.body));
+                    }
+                    file_info.ssh_key = Some(ssh_key);
+                }
+                "ENCRYPTED PRIVATE KEY" => {
+                    let mut ssh_key = file_info::SshKey::new();
+                    ssh_key.is_public = false;
+                    ssh_key.is_encrypted = true;
+                    file_info.ssh_key = Some(ssh_key);
+                }
+                _ => (),
             }
-            _ => (),
         }
     }
     let mut path_buf = PathBuf::new();
