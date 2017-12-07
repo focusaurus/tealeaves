@@ -359,6 +359,10 @@ bae4763e26fec1a00a06082a8648ce3d
 - https://etherhack.co.uk/asymmetric/docs/rsa_key_breakdown.html
 - https://crypto.stackexchange.com/a/21104
 - https://security.stackexchange.com/a/46781/67167
+- https://tools.ietf.org/html/rfc1421
+- https://tools.ietf.org/html/rfc1422
+- https://tools.ietf.org/html/rfc1423
+- https://tools.ietf.org/html/rfc2045
 
 ## Stream of consciousness notes to organize later
 - `brew install asn1c`

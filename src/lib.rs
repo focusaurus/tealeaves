@@ -37,6 +37,53 @@ fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
     }
     return prefix == &data[0..prefix.len()];
 }
+#[derive(Debug)]
+struct Pem {
+    pub tag: String,
+    pub headers: Vec<String>,
+    pub body: String,
+}
+
+fn parse_pem(pem: &str) -> Pem {
+    let pem_prefix = "-----BEGIN ";
+    let pem_suffix = "-----";
+    let mut pem_header = "";
+    let mut headers = vec![];
+    let mut body = vec![];
+    let mut blank_found = false;
+    for (index, line) in pem.lines().enumerate() {
+        if index == 0 {
+            pem_header = line;
+            if line.starts_with(pem_prefix) {
+                pem_header = &line[pem_prefix.len()..];
+            }
+            if pem_header.ends_with(pem_suffix) {
+                pem_header = &pem_header[..pem_header.len() - pem_suffix.len()];
+            }
+            continue;
+        }
+        if !blank_found && line.is_empty() {
+            blank_found = true;
+            continue;
+        }
+        if !blank_found {
+            headers.push(line.to_owned());
+        } else {
+            body.push(line.to_owned());
+        }
+    }
+    if !blank_found {
+        body = headers;
+        headers = vec![];
+    }
+    body.pop(); // discard pem_footer
+    let body = body.concat();
+    Pem {
+        tag: pem_header.to_string(),
+        headers,
+        body,
+    }
+}
 
 fn identify_openssh_v1(bytes: Vec<u8>) -> io::Result<file_info::SshKey> {
     /*
@@ -120,7 +167,18 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
         Ok(bits) => return bits,
         Err(_) => return 0,
     }
+}
 
+fn identify_dsa_private(bytes: Vec<u8>) -> io::Result<file_info::SshKey> {
+    let mut ssh_key = file_info::SshKey::new();
+    ssh_key.algorithm = Some("dsa".to_string());
+    ssh_key.is_public = false;
+    // let mut reader = io::Cursor::new(&bytes);
+    let ascii = String::from_utf8(bytes).unwrap_or("".to_string());
+    for line in ascii.lines().skip(1) {
+        println!("LINE {}", line);
+    }
+    Ok(ssh_key)
 }
 
 fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
@@ -272,18 +330,61 @@ pub fn scan<P: Permissions + PermissionsExt,
     if file_info.is_size_medium {
         let mut content = String::new();
         let mut file = fs.open_file(path)?;
-        file.read_to_string(&mut content)?;
-        if content.starts_with("ssh-ed25519 ") {
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+        println!("byte length: {}", bytes.len());
+
+        // file.read_to_string(&mut content)?;
+        if bytes.starts_with(b"ssh-ed25519 ") {
             file_info.ssh_key = Some(identify_ed25519_public(&content)?);
         }
-        if content.starts_with("ssh-rsa ") {
+        if bytes.starts_with(b"ssh-rsa ") {
             file_info.ssh_key = Some(identify_rsa_public(&content)?);
         }
-        if content.starts_with("ssh-dss ") {
+        if bytes.starts_with(b"ssh-dss ") {
             file_info.ssh_key = Some(identify_dsa_public(&content)?);
         }
-        if content.starts_with("ecdsa-") {
+        if bytes.starts_with(b"ecdsa-") {
             file_info.ssh_key = Some(identify_ecdsa_public(&content)?);
+        }
+        if bytes.starts_with(b"-----BEGIN ") {
+            let pem = parse_pem(&String::from_utf8_lossy(&bytes));
+            println!("PEM: {:?}", pem);
+            // let mut message = Vec::with_capacity(bytes.len());
+            // let mut lines = vec![];
+            //
+            // for (index, &byte) in bytes.iter().enumerate() {
+            //     if byte == b"\n"[0] {
+            //         lines.push(index);
+            //     }
+            // }
+            // println!("lines {:?}", lines);
+            // let start = lines.first().unwrap();
+            // let mut end = lines.last().unwrap();
+            // if *end == bytes.len() - 1 {
+            //     end = &lines[lines.len() - 2];
+            // }
+            // // println!("{:?} {}", start, end);
+            // for (index, &byte) in bytes.iter().enumerate() {
+            //     if index >= *start && index < *end {
+            //         // print!("{:x}", byte);
+            //         message.push(byte);
+            //     }
+            // }
+            // let x = mailparse::parse_mail(&message);
+            // println!("mailparse {:?}", x);
+            // let content = String::from_utf8(&content);
+            // let mut bytes = vec![];
+            // let mut lines: Vec<&str> = content.lines().skip(1).collect();
+            // lines.pop(); // discard PEM footer
+            // for line in lines {
+            //     bytes.append(line.to_string().as_bytes());
+            // }
+            // // let message: [&str] = lines.into_iter().collect();
+            // // let message = mailparse::parse_mail(&);
+            // for line in lines {
+            //     println!("LINE {:?}", line);
+            // }
         }
         let parsed_result = pem::parse(content);
         match parsed_result {
@@ -333,9 +434,7 @@ pub fn scan<P: Permissions + PermissionsExt,
             _ => (),
         }
     }
-
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
-
     Ok(file_info)
 }
