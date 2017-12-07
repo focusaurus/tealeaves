@@ -210,6 +210,32 @@ fn identify_dsa_public(content: &str) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
+fn identify_ecdsa_public(content: &str) -> io::Result<file_info::SshKey> {
+    let mut ssh_key = file_info::SshKey::new();
+    ssh_key.is_public = true;
+    let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
+    let label = iterator.next().unwrap_or("").to_string();
+    let payload = iterator.next().unwrap_or(""); // base64
+    ssh_key.comment = Some(iterator.next().unwrap_or("").to_string());
+    let payload = base64::decode(payload).unwrap_or(vec![]); // binary
+    let mut reader = io::BufReader::new(payload.as_slice());
+    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+    let algorithm = String::from_utf8(algorithm.clone()).unwrap_or(label);
+    if algorithm.starts_with("ecdsa") {
+        ssh_key.algorithm = Some("ecdsa".to_string());
+    }
+    if algorithm.ends_with("-nistp256") {
+        ssh_key.key_length = Some(256);
+    }
+    if algorithm.ends_with("-nistp384") {
+        ssh_key.key_length = Some(384);
+    }
+    if algorithm.ends_with("-nistp521") {
+        ssh_key.key_length = Some(521);
+    }
+    Ok(ssh_key)
+}
+
 pub fn scan<P: Permissions + PermissionsExt,
             M: Metadata<Permissions = P>,
             F: GenFS<Permissions = P, Metadata = M>>
@@ -256,11 +282,8 @@ pub fn scan<P: Permissions + PermissionsExt,
         if content.starts_with("ssh-dss ") {
             file_info.ssh_key = Some(identify_dsa_public(&content)?);
         }
-        if content.starts_with("ecdsa-sha2-nistp256 ") {
-            let mut ssh_key = file_info::SshKey::new();
-            ssh_key.is_public = true;
-            ssh_key.algorithm = Some("ecdsa".to_string());
-            file_info.ssh_key = Some(ssh_key);
+        if content.starts_with("ecdsa-") {
+            file_info.ssh_key = Some(identify_ecdsa_public(&content)?);
         }
         let parsed_result = pem::parse(content);
         match parsed_result {
