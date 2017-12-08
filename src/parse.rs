@@ -5,13 +5,13 @@ use nom::IResult;
 use std::io;
 
 #[derive(Debug)]
-struct PublicKey {
-    algorithm: Option<String>,
-    comment: Option<String>,
-    payload: Option<Vec<u8>>
+pub struct PublicKey {
+    pub algorithm: Option<String>,
+    pub comment: Option<String>,
+    pub payload: Option<Vec<u8>>,
 }
 
-fn public_key<'a>(bytes: &'a [u8]) -> io::Result<PublicKey> {
+pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<PublicKey> {
     named!(space_sep, is_a_s!(" \t"));
     named!(value, is_not_s!(" \t"));
     named!(public_key<(&[u8], &[u8], &[u8])>,
@@ -32,12 +32,12 @@ fn public_key<'a>(bytes: &'a [u8]) -> io::Result<PublicKey> {
                 payload = Some(decoded);
             }
 
-            Ok(PublicKey{
-                algorithm: Some(String::from_utf8_lossy(output.0).into_owned()),
-                comment: Some(String::from_utf8_lossy(output.2).into_owned()),
-                payload,
-            })
-        },
+            Ok(PublicKey {
+                   algorithm: Some(String::from_utf8_lossy(output.0).into_owned()),
+                   comment: Some(String::from_utf8_lossy(output.2).into_owned()),
+                   payload,
+               })
+        }
         IResult::Error(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
         IResult::Incomplete(_needed) => {
             Err(io::Error::new(io::ErrorKind::Other, "Didn't fully parse"))

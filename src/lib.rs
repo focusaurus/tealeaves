@@ -190,21 +190,23 @@ fn identify_ed25519_public(content: &str) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
-fn identify_rsa_public(content: &str) -> io::Result<file_info::SshKey> {
+fn identify_rsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
-    let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
-    let label = iterator.next().unwrap_or("").to_string();
-    let payload = iterator.next().unwrap_or(""); // base64
-    ssh_key.comment = Some(iterator.next().unwrap_or("").to_string());
-    let payload = base64::decode(payload).unwrap_or(vec![]); // binary
-    let mut reader = io::BufReader::new(payload.as_slice());
-    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
-    ssh_key.algorithm = Some(String::from_utf8(algorithm.clone()).unwrap_or(label));
-    let _exponent = read_field(&mut reader).unwrap_or(vec![]);
-    let modulus = read_field(&mut reader).unwrap_or(vec![]);
-    // modulus has a leading zero byte to be discarded, then just convert bytes to bits
-    ssh_key.key_length = Some((modulus.len() - 1) * 8);
+    let pub_key = parse::public_key(bytes)?;
+    ssh_key.algorithm = pub_key.algorithm;
+    ssh_key.comment = pub_key.comment;
+    if let Some(payload) = pub_key.payload {
+        let mut reader = io::BufReader::new(payload.as_slice());
+        let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+        let _exponent = read_field(&mut reader).unwrap_or(vec![]);
+        let modulus = read_field(&mut reader).unwrap_or(vec![]);
+        // modulus has a leading zero byte to be discarded, then just convert bytes to bits
+        ssh_key.key_length = Some((modulus.len() - 1) * 8);
+        if let Ok(algo) = String::from_utf8(algorithm.clone()) {
+            ssh_key.algorithm = Some(algo);
+        }
+    }
     Ok(ssh_key)
 }
 
@@ -300,7 +302,7 @@ pub fn scan<P: Permissions + PermissionsExt,
             file_info.ssh_key = Some(identify_ed25519_public(&content)?);
         }
         if bytes.starts_with(b"ssh-rsa ") {
-            file_info.ssh_key = Some(identify_rsa_public(&content)?);
+            file_info.ssh_key = Some(identify_rsa_public(&bytes)?);
         }
         if bytes.starts_with(b"ssh-dss ") {
             file_info.ssh_key = Some(identify_dsa_public(&content)?);
