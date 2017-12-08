@@ -1,10 +1,13 @@
 extern crate base64;
 extern crate byteorder;
+extern crate nom_pem;
 extern crate rsfs;
 extern crate yasna;
 mod file_info;
+mod parse;
 use byteorder::{BigEndian, ReadBytesExt};
 use file_info::FileInfo;
+use nom_pem::headers::{HeaderEntry, ProcTypeType};
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
@@ -13,8 +16,21 @@ use std::io;
 use std::io::{ErrorKind, Read};
 use std::path::{PathBuf, Path};
 
+#[macro_use]
+extern crate nom;
+
+
 fn bail(message: String) -> io::Error {
     return io::Error::new(ErrorKind::Other, message);
+}
+
+fn is_encrypted(headers: &Vec<HeaderEntry>) -> bool {
+    headers
+        .iter()
+        .any(|header| match header {
+                 &HeaderEntry::ProcType(_code, ref kind) => kind == &ProcTypeType::ENCRYPTED,
+                 _ => false,
+             })
 }
 
 /// Read a length-prefixed field in the format openssh uses
@@ -35,53 +51,6 @@ fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
         return false;
     }
     return prefix == &data[0..prefix.len()];
-}
-#[derive(Debug)]
-struct Pem {
-    pub tag: String,
-    pub headers: Vec<String>,
-    pub body: Vec<u8>,
-}
-
-fn parse_pem(pem: &str) -> Pem {
-    let pem_prefix = "-----BEGIN ";
-    let pem_suffix = "-----";
-    let mut pem_header = "";
-    let mut headers = vec![];
-    let mut body = vec![];
-    let mut blank_found = false;
-    for (index, line) in pem.lines().enumerate() {
-        if index == 0 {
-            pem_header = line;
-            if line.starts_with(pem_prefix) {
-                pem_header = &line[pem_prefix.len()..];
-            }
-            if pem_header.ends_with(pem_suffix) {
-                pem_header = &pem_header[..pem_header.len() - pem_suffix.len()];
-            }
-            continue;
-        }
-        if !blank_found && line.is_empty() {
-            blank_found = true;
-            continue;
-        }
-        if !blank_found {
-            headers.push(line.to_owned());
-        } else {
-            body.push(line.to_owned());
-        }
-    }
-    if !blank_found {
-        body = headers;
-        headers = vec![];
-    }
-    body.pop(); // discard pem_footer
-    let body = base64::decode(&body.concat()).unwrap();
-    Pem {
-        tag: pem_header.to_string(),
-        headers,
-        body,
-    }
 }
 
 fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
@@ -167,20 +136,8 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
         Err(error) => {
             //print!("ERROR {}", error);
             return 0;
-        },
+        }
     }
-}
-
-fn identify_dsa_private(bytes: Vec<u8>) -> io::Result<file_info::SshKey> {
-    let mut ssh_key = file_info::SshKey::new();
-    ssh_key.algorithm = Some("dsa".to_string());
-    ssh_key.is_public = false;
-    // let mut reader = io::Cursor::new(&bytes);
-    let ascii = String::from_utf8(bytes).unwrap_or("".to_string());
-    // for line in ascii.lines().skip(1) {
-    //     println!("LINE {}", line);
-    // }
-    Ok(ssh_key)
 }
 
 fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
@@ -258,12 +215,17 @@ fn identify_dsa_public(content: &str) -> io::Result<file_info::SshKey> {
     let label = iterator.next().unwrap_or("").to_string();
     let payload = iterator.next().unwrap_or(""); // base64
     ssh_key.comment = Some(iterator.next().unwrap_or("").to_string());
+    println!("HEY {:?} {} {:?}", label, payload.len(), ssh_key.comment);
     let payload = base64::decode(payload).unwrap_or(vec![]); // binary
     let mut reader = io::BufReader::new(payload.as_slice());
     let algorithm = read_field(&mut reader).unwrap_or(vec![]);
-    if String::from_utf8(algorithm.clone()).unwrap_or(label) == "ssh-dss" {
-        ssh_key.algorithm = Some("dsa".to_string());
-    }
+    ssh_key.algorithm = if has_prefix(&algorithm, b"ssh-dss ") {
+        Some("dsa".to_string())
+    } else {
+        Some(label)
+    };
+    println!("HEY DSA 3 {:?}", ssh_key.comment);
+
     let field = read_field(&mut reader).unwrap_or(vec![]);
     // field has a leading zero byte to be discarded, then just convert bytes to bits
     ssh_key.key_length = Some((field.len() - 1) * 8);
@@ -330,7 +292,7 @@ pub fn scan<P: Permissions + PermissionsExt,
         }
     }
     if file_info.is_size_medium {
-        let mut content = String::new();
+        let content = String::new();
         let mut file = fs.open_file(path)?;
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
@@ -347,53 +309,59 @@ pub fn scan<P: Permissions + PermissionsExt,
             file_info.ssh_key = Some(identify_ecdsa_public(&content)?);
         }
         if bytes.starts_with(b"-----BEGIN ") {
-            let pem = parse_pem(&String::from_utf8_lossy(&bytes));
-            file_info.is_pem = true;
-            file_info.pem_tag = pem.tag.to_string();
+            match nom_pem::decode_block(&bytes) {
+                Ok(block) => {
+                    println!("PEM OK {}", block.data.len());
+                    file_info.is_pem = true;
+                    file_info.pem_tag = block.block_type.to_string();
 
-            match pem.tag.as_str() {
-                "OPENSSH PRIVATE KEY" => {
-                    if has_prefix(&pem.body, b"openssh-key-v1") {
-                        file_info.ssh_key = Some(identify_openssh_v1(&pem.body)?);
+                    match block.block_type {
+                        "DSA PRIVATE KEY" => {
+                            let mut ssh_key = file_info::SshKey::new();
+                            ssh_key.is_public = false;
+                            ssh_key.algorithm = Some("dsa".to_string());
+                            ssh_key.is_encrypted = is_encrypted(&block.headers);
+                            if !ssh_key.is_encrypted {
+                                ssh_key.key_length = Some(get_dsa_length(&block.data));
+                            }
+                            file_info.ssh_key = Some(ssh_key);
+
+                        }
+                        "OPENSSH PRIVATE KEY" => {
+                            if has_prefix(&block.data, b"openssh-key-v1") {
+                                file_info.ssh_key = Some(identify_openssh_v1(&block.data)?);
+                            }
+                        }
+                        "RSA PRIVATE KEY" => {
+                            let mut ssh_key = file_info::SshKey::new();
+                            ssh_key.is_public = false;
+                            ssh_key.algorithm = Some("rsa".to_string());
+                            ssh_key.key_length = Some(get_rsa_length(&block.data));
+                            file_info.ssh_key = Some(ssh_key);
+                        }
+                        "EC PRIVATE KEY" => {
+                            let mut ssh_key = file_info::SshKey::new();
+                            ssh_key.is_public = false;
+                            ssh_key.algorithm = Some("ecdsa".to_string());
+                            let result = get_ecdsa_length(&block.data);
+                            if result.is_err() {
+                                // FIXME attach err to ssh_key struct for later printing
+                            }
+                            ssh_key.key_length = result.ok();
+                            file_info.ssh_key = Some(ssh_key);
+                        }
+                        "ENCRYPTED PRIVATE KEY" => {
+                            let mut ssh_key = file_info::SshKey::new();
+                            ssh_key.is_public = false;
+                            ssh_key.is_encrypted = true;
+                            file_info.ssh_key = Some(ssh_key);
+                        }
+                        _ => {}
                     }
                 }
-                "RSA PRIVATE KEY" => {
-                    let mut ssh_key = file_info::SshKey::new();
-                    ssh_key.is_public = false;
-                    ssh_key.algorithm = Some("rsa".to_string());
-                    ssh_key.key_length = Some(get_rsa_length(&pem.body));
-                    file_info.ssh_key = Some(ssh_key);
+                Err(error) => {
+                    println!("PEM ERROR {:?}", error);
                 }
-                "EC PRIVATE KEY" => {
-                    let mut ssh_key = file_info::SshKey::new();
-                    ssh_key.is_public = false;
-                    ssh_key.algorithm = Some("ecdsa".to_string());
-                    let result = get_ecdsa_length(&pem.body);
-                    if result.is_err() {
-                        // FIXME attach err to ssh_key struct for later printing
-                    }
-                    ssh_key.key_length = result.ok();
-                    file_info.ssh_key = Some(ssh_key);
-                }
-                "DSA PRIVATE KEY" => {
-                    let mut ssh_key = file_info::SshKey::new();
-                    ssh_key.is_public = false;
-                    ssh_key.algorithm = Some("dsa".to_string());
-                    ssh_key.is_encrypted = pem.headers
-                        .iter()
-                        .any(|header| header.ends_with(",ENCRYPTED"));
-                    if !ssh_key.is_encrypted {
-                        ssh_key.key_length = Some(get_dsa_length(&pem.body));
-                    }
-                    file_info.ssh_key = Some(ssh_key);
-                }
-                "ENCRYPTED PRIVATE KEY" => {
-                    let mut ssh_key = file_info::SshKey::new();
-                    ssh_key.is_public = false;
-                    ssh_key.is_encrypted = true;
-                    file_info.ssh_key = Some(ssh_key);
-                }
-                _ => (),
             }
         }
     }
