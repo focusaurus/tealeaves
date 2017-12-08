@@ -1,14 +1,20 @@
 // use nom_pem::headers::{HeaderEntry, ProcTypeType};
-// extern crate base64;
+extern crate base64;
 extern crate nom_pem;
-use file_info;
 use nom::IResult;
 use std::io;
 
-fn public_key<'a>(bytes: &'a [u8]) -> io::Result<file_info::SshKey> {
+#[derive(Debug)]
+struct PublicKey {
+    algorithm: Option<String>,
+    comment: Option<String>,
+    payload: Option<Vec<u8>>
+}
+
+fn public_key<'a>(bytes: &'a [u8]) -> io::Result<PublicKey> {
     named!(space_sep, is_a_s!(" \t"));
     named!(value, is_not_s!(" \t"));
-    named!(pubkey_b<(&[u8], &[u8], &[u8])>,
+    named!(public_key<(&[u8], &[u8], &[u8])>,
       do_parse!(
         algorithm: value >>
         separator: space_sep >>
@@ -18,12 +24,19 @@ fn public_key<'a>(bytes: &'a [u8]) -> io::Result<file_info::SshKey> {
         (algorithm, payload, comment)
       )
     );
-    match pubkey_b(bytes) {
+    match public_key(bytes) {
         IResult::Done(_input, output) => {
-            let mut key = file_info::SshKey::new();
-            key.algorithm = Some(String::from_utf8_lossy(output.0).into_owned());
-            key.comment = Some(String::from_utf8_lossy(output.2).into_owned());
-            Ok(key)
+            let result = base64::decode(output.1);
+            let mut payload = None;
+            if let Ok(decoded) = result {
+                payload = Some(decoded);
+            }
+
+            Ok(PublicKey{
+                algorithm: Some(String::from_utf8_lossy(output.0).into_owned()),
+                comment: Some(String::from_utf8_lossy(output.2).into_owned()),
+                payload,
+            })
         },
         IResult::Error(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
         IResult::Incomplete(_needed) => {
