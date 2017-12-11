@@ -66,10 +66,13 @@ pub fn scan<P: Permissions + PermissionsExt,
             file_info.ssh_key = Some(parse::public_key::ecdsa(&bytes)?);
         }
         if bytes.starts_with(b"-----BEGIN ") {
-            file_info.ssh_key = parse::private_key::pem(&bytes);
-            if file_info.ssh_key.is_some() {
-                file_info.is_pem = true;
+            match parse::private_key::pem(&bytes) {
+                Ok(key) => file_info.ssh_key = Some(key),
+                Err(message) => file_info.error = Some(message),
             }
+        }
+        if file_info.ssh_key.is_some() {
+            file_info.is_pem = true;
         }
     }
     let mut path_buf = PathBuf::new();

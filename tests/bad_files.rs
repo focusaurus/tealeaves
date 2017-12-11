@@ -114,10 +114,6 @@ fn pem_long_field_gets_detected() {
     pem.write(b"\n").unwrap();
     pem.write(b"-----END OPENSSH PRIVATE KEY-----\n").unwrap();
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
-    assert!(result.is_err());
-    assert!(result
-                .err()
-                .unwrap()
-                .description()
-                .starts_with("Field size too large"));
+    assert!(result.is_ok());
+    assert!(result.unwrap().error.unwrap().contains("Field size too large"));
 }

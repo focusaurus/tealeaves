@@ -61,11 +61,13 @@ pub struct FileInfo {
     pub is_size_small: bool,
     pub ssh_key: Option<SshKey>,
     pub path_buf: path::PathBuf,
+    pub error: Option<String>,
 }
 
 impl FileInfo {
     pub fn new() -> Self {
         Self {
+            error: None,
             is_directory: false,
             is_file: false,
             is_pem: false,
@@ -73,9 +75,9 @@ impl FileInfo {
             is_size_large: false,
             is_size_medium: false,
             is_size_small: false,
-            ssh_key: None,
             path_buf: path::PathBuf::from("/"),
             pem_tag: "".to_string(),
+            ssh_key: None,
         }
     }
 }

@@ -152,24 +152,21 @@ fn dsa(block: &nom_pem::Block) -> file_info::SshKey {
     ssh_key
 }
 
-pub fn pem(bytes: &[u8]) -> Option<file_info::SshKey> {
+pub fn pem(bytes: &[u8]) -> Result<file_info::SshKey, String> {
     match nom_pem::decode_block(&bytes) {
         Ok(block) => {
             match block.block_type {
                 "DSA PRIVATE KEY" => {
-                    return Some(dsa(&block));
+                    return Ok(dsa(&block));
                 }
                 "OPENSSH PRIVATE KEY" => {
                     if parse::has_prefix(b"openssh-key-v1", &block.data) {
                         return match identify_openssh_v1(&block.data) {
-                                   Ok(ssh_key) => Some(ssh_key),
-                                   Err(error) => {
-                            eprintln!("Error parsing private key {}", error);
-                            None
-                        }
+                                   Ok(ssh_key) => Ok(ssh_key),
+                                   Err(error) => Err(error.description().to_string()),
                                };
                     } else {
-                        return Some(file_info::SshKey::new());
+                        return Ok(file_info::SshKey::new());
                     }
                 }
                 "RSA PRIVATE KEY" => {
@@ -177,33 +174,32 @@ pub fn pem(bytes: &[u8]) -> Option<file_info::SshKey> {
                     ssh_key.is_public = false;
                     ssh_key.algorithm = Some("rsa".to_string());
                     ssh_key.key_length = Some(get_rsa_length(&block.data));
-                    return Some(ssh_key);
+                    return Ok(ssh_key);
                 }
                 "EC PRIVATE KEY" => {
                     let mut ssh_key = file_info::SshKey::new();
                     ssh_key.is_public = false;
                     ssh_key.algorithm = Some("ecdsa".to_string());
                     let result = get_ecdsa_length(&block.data);
-                    if result.is_err() {
-                        // FIXME attach err to ssh_key struct for later printing
+                    match result {
+                        Ok(length) => ssh_key.key_length = Some(length),
+                        Err(message) => return Err(message),
                     }
-                    ssh_key.key_length = result.ok();
-                    return Some(ssh_key);
+                    return Ok(ssh_key);
                 }
                 "ENCRYPTED PRIVATE KEY" => {
                     let mut ssh_key = file_info::SshKey::new();
                     ssh_key.is_public = false;
                     ssh_key.is_encrypted = true;
-                    return Some(ssh_key);
+                    return Ok(ssh_key);
                 }
                 _ => {
-                    return None;
+                    return Err("Unrecognized private key format".to_string());
                 }
             }
         }
         Err(error) => {
-            println!("PEM ERROR {:?}", error);
-            return None;
+            return Err(format!("PEM error: {:?}", error));
         }
     }
 }
