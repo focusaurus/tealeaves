@@ -99,7 +99,7 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
     // FIXME yasna::ASN1Error handling
     match asn_result {
         Ok(bits) => return bits,
-        Err(error) => {
+        Err(_error) => {
             //print!("ERROR {}", error);
             return 0;
         }

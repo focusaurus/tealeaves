@@ -11,14 +11,14 @@ use std::io::Write;
 
 fn memfs() -> FS {
     let fs = rsfs::mem::unix::FS::new();
-    fs.create_dir_all("/tmp");
+    fs.create_dir_all("/tmp").unwrap();
     fs
 }
 
 #[test]
 fn empty_file_gets_error() {
     let fs = memfs();
-    let empty = fs.create_file("/tmp/empty");
+    let _empty = fs.create_file("/tmp/empty");
     let file_info = tealeaves::scan(&fs, &"/tmp/empty").unwrap();
     assert!(file_info.is_size_small);
     assert!(!file_info.is_size_medium);
@@ -29,9 +29,9 @@ fn empty_file_gets_error() {
 fn unreadable_file_gets_error() {
     let fs = memfs();
     let mut unreadable = fs.create_file("/tmp/unreadable").unwrap();
-    unreadable.write(&[1, 2, 3, 4]);
+    unreadable.write(&[1, 2, 3, 4]).unwrap();
     for &mode in [0o000, 0o002, 0o020, 0o200, 0o222].iter() {
-        fs.set_permissions("/tmp/unreadable", Permissions::from_mode(mode));
+        fs.set_permissions("/tmp/unreadable", Permissions::from_mode(mode)).unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/unreadable").unwrap();
         assert!(!file_info.is_readable);
     }
@@ -41,9 +41,9 @@ fn unreadable_file_gets_error() {
 fn readable_file_gets_no_error() {
     let fs = memfs();
     let mut readable = fs.create_file("/tmp/readable").unwrap();
-    readable.write(&[1, 2, 3, 4]);
+    readable.write(&[1, 2, 3, 4]).unwrap();
     for &mode in [0o004, 0o004, 0o040, 0o400, 0o444].iter() {
-        fs.set_permissions("/tmp/readable", Permissions::from_mode(mode));
+        fs.set_permissions("/tmp/readable", Permissions::from_mode(mode)).unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/readable").unwrap();
         assert!(file_info.is_readable);
     }
@@ -53,7 +53,7 @@ fn readable_file_gets_no_error() {
 fn low_size_gets_error() {
     let fs = memfs();
     let mut small = fs.create_file("/tmp/small").unwrap();
-    small.write(&[1, 2, 3, 4]);
+    small.write(&[1, 2, 3, 4]).unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
     assert!(file_info.is_size_small);
 }
@@ -62,7 +62,7 @@ fn low_size_gets_error() {
 fn not_pem_gets_detected() {
     let fs = memfs();
     let mut not_pem = fs.create_file("/tmp/not_pem").unwrap();
-    not_pem.write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe");
+    not_pem.write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe").unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
     assert!(!file_info.is_pem);
 }
@@ -79,7 +79,7 @@ AAAEBIhgNOlzPnH3cAul5S0VSrnirdVr6TVDL2gVDXIEu6FTZZL7FhUAK5ObLFAMHIV8Pm
 1F9kWfGrTeXTj61g/ETGAAAAH1RlYWxldmVzIHRlc3QgRUQyNTUxOSBTU0ggS2V5IDEBAg
 MEBQY=
 -----END OPENSSH PRIVATE KEY-----
-");
+").unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
     assert!(file_info.is_pem);
 }
@@ -88,8 +88,8 @@ MEBQY=
 fn high_size_gets_error() {
     let fs = memfs();
     let mut big = fs.create_file("/tmp/big").unwrap();
-    for x in 0..1024 {
-        big.write(&[1, 2, 3, 4, 5, 6, 7]);
+    for _x in 0..1024 {
+        big.write(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
     }
     let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
     assert!(file_info.is_size_large);
@@ -109,10 +109,10 @@ fn pem_long_field_gets_detected() {
     let bogus_length = "00001001";
     let bin = hex::decode([valid_prefix, bogus_length].concat()).unwrap();
     let base64 = base64::encode(&bin);
-    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n");
-    pem.write(base64.as_bytes());
-    pem.write(b"\n");
-    pem.write(b"-----END OPENSSH PRIVATE KEY-----\n");
+    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n").unwrap();
+    pem.write(base64.as_bytes()).unwrap();
+    pem.write(b"\n").unwrap();
+    pem.write(b"-----END OPENSSH PRIVATE KEY-----\n").unwrap();
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_err());
     assert!(result
