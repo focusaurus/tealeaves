@@ -187,21 +187,6 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
         }
     }
 }
-fn identify_ed25519_public1(content: &str) -> io::Result<file_info::SshKey> {
-    let mut ssh_key = file_info::SshKey::new();
-    ssh_key.is_public = true;
-    let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
-    let label = iterator.next().unwrap_or("").to_string();
-    let payload = iterator.next().unwrap_or(""); // base64
-    ssh_key.comment = Some(iterator.next().unwrap_or("").to_string());
-    let payload = base64::decode(payload).unwrap_or(vec![]); // binary
-    let mut reader = io::BufReader::new(payload.as_slice());
-    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
-    ssh_key.algorithm = Some(String::from_utf8(algorithm.clone()).unwrap_or(label));
-    // let prefix = has_prefix(b"ssh-ed25519", &algorithm);
-    ssh_key.point = Some(read_field(&mut reader).unwrap_or(vec![]));
-    Ok(ssh_key)
-}
 
 fn identify_ed25519_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
@@ -247,7 +232,7 @@ fn identify_rsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
-fn identify_dsa_public(content: &str) -> io::Result<file_info::SshKey> {
+fn identify_dsa_public1(content: &str) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
     let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
@@ -268,6 +253,25 @@ fn identify_dsa_public(content: &str) -> io::Result<file_info::SshKey> {
     let field = read_field(&mut reader).unwrap_or(vec![]);
     // field has a leading zero byte to be discarded, then just convert bytes to bits
     ssh_key.key_length = Some((field.len() - 1) * 8);
+    Ok(ssh_key)
+}
+fn identify_dsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
+    let mut ssh_key = file_info::SshKey::new();
+    ssh_key.is_public = true;
+    ssh_key.algorithm = Some("dsa".to_string());
+    let pub_key = parse::public_key(bytes)?;
+    let comment = String::from_utf8(Vec::from(pub_key.comment)).unwrap();
+    ssh_key.comment = Some(comment);
+    if let Some(payload) = pub_key.payload {
+        let mut reader = io::BufReader::new(payload.as_slice());
+        let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+        if algorithm == &b"ssh-dss"[..] {
+            ssh_key.algorithm = Some("dsa".to_string());
+        }
+        let field = read_field(&mut reader).unwrap_or(vec![]);
+        // field has a leading zero byte to be discarded, then just convert bytes to bits
+        ssh_key.key_length = Some((field.len() - 1) * 8);
+    }
     Ok(ssh_key)
 }
 
@@ -342,7 +346,7 @@ pub fn scan<P: Permissions + PermissionsExt,
             file_info.ssh_key = Some(identify_rsa_public(&bytes)?);
         }
         if bytes.starts_with(b"ssh-dss ") {
-            file_info.ssh_key = Some(identify_dsa_public(&content)?);
+            file_info.ssh_key = Some(identify_dsa_public(&bytes)?);
         }
         if bytes.starts_with(b"ecdsa-") {
             file_info.ssh_key = Some(identify_ecdsa_public(&content)?);
