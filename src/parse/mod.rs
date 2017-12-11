@@ -1,8 +1,4 @@
-extern crate base64;
 extern crate byteorder;
-extern crate nom_pem;
-extern crate rsfs;
-extern crate yasna;
 pub mod private_key;
 pub mod public_key;
 use byteorder::{BigEndian, ReadBytesExt};

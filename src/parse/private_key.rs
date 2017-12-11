@@ -1,14 +1,11 @@
-extern crate base64;
-extern crate byteorder;
-extern crate nom_pem;
-extern crate rsfs;
-extern crate yasna;
 use byteorder::{BigEndian, ReadBytesExt};
+use file_info;
+use nom_pem;
+use nom_pem::headers::{HeaderEntry, ProcTypeType};
+use parse;
 use std::error::Error;
 use std::io;
-use nom_pem::headers::{HeaderEntry, ProcTypeType};
-use file_info;
-use parse;
+use yasna;
 
 fn is_encrypted(headers: &Vec<HeaderEntry>) -> bool {
     headers

@@ -1,7 +1,7 @@
-extern crate base64;
+use base64;
 use file_info;
-use parse;
 use nom::IResult;
+use parse;
 use std::io;
 
 #[derive(Debug)]

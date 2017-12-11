@@ -1,8 +1,8 @@
 extern crate base64;
 extern crate byteorder;
 extern crate nom_pem;
-extern crate rsfs;
 extern crate yasna;
+extern crate rsfs;
 mod file_info;
 mod parse;
 use file_info::FileInfo;
