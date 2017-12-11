@@ -232,29 +232,6 @@ fn identify_rsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
-fn identify_dsa_public1(content: &str) -> io::Result<file_info::SshKey> {
-    let mut ssh_key = file_info::SshKey::new();
-    ssh_key.is_public = true;
-    let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
-    let label = iterator.next().unwrap_or("").to_string();
-    let payload = iterator.next().unwrap_or(""); // base64
-    ssh_key.comment = Some(iterator.next().unwrap_or("").to_string());
-    println!("HEY {:?} {} {:?}", label, payload.len(), ssh_key.comment);
-    let payload = base64::decode(payload).unwrap_or(vec![]); // binary
-    let mut reader = io::BufReader::new(payload.as_slice());
-    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
-    ssh_key.algorithm = if has_prefix(&algorithm, b"ssh-dss ") {
-        Some("dsa".to_string())
-    } else {
-        Some(label)
-    };
-    println!("HEY DSA 3 {:?}", ssh_key.comment);
-
-    let field = read_field(&mut reader).unwrap_or(vec![]);
-    // field has a leading zero byte to be discarded, then just convert bytes to bits
-    ssh_key.key_length = Some((field.len() - 1) * 8);
-    Ok(ssh_key)
-}
 fn identify_dsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
@@ -275,7 +252,7 @@ fn identify_dsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
-fn identify_ecdsa_public(content: &str) -> io::Result<file_info::SshKey> {
+fn identify_ecdsa_public1(content: &str) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
     let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
@@ -297,6 +274,29 @@ fn identify_ecdsa_public(content: &str) -> io::Result<file_info::SshKey> {
     }
     if algorithm.ends_with("-nistp521") {
         ssh_key.key_length = Some(521);
+    }
+    Ok(ssh_key)
+}
+
+fn identify_ecdsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
+    let mut ssh_key = file_info::SshKey::new();
+    ssh_key.is_public = true;
+    ssh_key.algorithm = Some("ecdsa".to_string());
+    let pub_key = parse::public_key(bytes)?;
+    let comment = String::from_utf8(Vec::from(pub_key.comment)).unwrap();
+    ssh_key.comment = Some(comment);
+    if let Some(payload) = pub_key.payload {
+        let mut reader = io::BufReader::new(payload.as_slice());
+        let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+        if algorithm.ends_with(b"-nistp256") {
+            ssh_key.key_length = Some(256);
+        }
+        if algorithm.ends_with(b"-nistp384") {
+            ssh_key.key_length = Some(384);
+        }
+        if algorithm.ends_with(b"-nistp521") {
+            ssh_key.key_length = Some(521);
+        }
     }
     Ok(ssh_key)
 }
@@ -335,7 +335,6 @@ pub fn scan<P: Permissions + PermissionsExt,
         }
     }
     if file_info.is_size_medium {
-        let content = String::new();
         let mut file = fs.open_file(path)?;
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
@@ -349,7 +348,7 @@ pub fn scan<P: Permissions + PermissionsExt,
             file_info.ssh_key = Some(identify_dsa_public(&bytes)?);
         }
         if bytes.starts_with(b"ecdsa-") {
-            file_info.ssh_key = Some(identify_ecdsa_public(&content)?);
+            file_info.ssh_key = Some(identify_ecdsa_public(&bytes)?);
         }
         if bytes.starts_with(b"-----BEGIN ") {
             match nom_pem::decode_block(&bytes) {
