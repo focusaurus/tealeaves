@@ -142,6 +142,9 @@ fn dsa(block: &nom_pem::Block) -> Result<file_info::SshKey, String> {
     ssh_key.is_public = false;
     ssh_key.algorithm = Some("dsa".to_string());
     ssh_key.is_encrypted = is_encrypted(&block.headers);
+    if ssh_key.is_encrypted {
+        return Ok(ssh_key);
+    }
     return match get_dsa_length(&block.data) {
                Ok(length) => {
         ssh_key.key_length = Some(length);
