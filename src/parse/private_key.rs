@@ -82,7 +82,7 @@ fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     }
 }
 
-fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
+fn get_dsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _int1 = reader.next().read_i8()?;
@@ -96,13 +96,9 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> usize {
             return Ok(int2.bits());
         })
     });
-    // FIXME yasna::ASN1Error handling
     match asn_result {
-        Ok(bits) => return bits,
-        Err(_error) => {
-            //print!("ERROR {}", error);
-            return 0;
-        }
+        Ok(bits) => Ok(bits),
+        Err(error) => Err(error.description().to_string()),
     }
 }
 
@@ -141,15 +137,18 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     }
 }
 
-fn dsa(block: &nom_pem::Block) -> file_info::SshKey {
+fn dsa(block: &nom_pem::Block) -> Result<file_info::SshKey, String> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = false;
     ssh_key.algorithm = Some("dsa".to_string());
     ssh_key.is_encrypted = is_encrypted(&block.headers);
-    if !ssh_key.is_encrypted {
-        ssh_key.key_length = Some(get_dsa_length(&block.data));
+    return match get_dsa_length(&block.data) {
+               Ok(length) => {
+        ssh_key.key_length = Some(length);
+        Ok(ssh_key)
     }
-    ssh_key
+               Err(message) => Err(message),
+           };
 }
 
 pub fn pem(bytes: &[u8]) -> Result<file_info::SshKey, String> {
@@ -157,7 +156,10 @@ pub fn pem(bytes: &[u8]) -> Result<file_info::SshKey, String> {
         Ok(block) => {
             match block.block_type {
                 "DSA PRIVATE KEY" => {
-                    return Ok(dsa(&block));
+                    return match dsa(&block) {
+                               Ok(key) => Ok(key),
+                               Err(message) => Err(message),
+                           };
                 }
                 "OPENSSH PRIVATE KEY" => {
                     if parse::has_prefix(b"openssh-key-v1", &block.data) {

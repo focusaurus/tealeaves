@@ -136,12 +136,19 @@ fn asn1_error_gets_detected() {
     payload.extend_from_slice(b"ssh-rsa"); // magic prefix
     payload.extend_from_slice(&[0]); // null byte
     payload.extend_from_slice(b"this-is-not-asn1");
-    let payload = base64::encode(&payload);
-    pem.write(b"-----BEGIN RSA PRIVATE KEY-----\n").unwrap();
-    pem.write(payload.as_bytes()).unwrap();
-    pem.write(b"\n").unwrap();
-    pem.write(b"-----END RSA PRIVATE KEY-----\n").unwrap();
-    let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
-    println!("HEY ASN1 {:?}", file_info);
-    assert!(file_info.error.is_some());
+    let tags = ["RSA", "DSA", "EC"];
+    for tag in tags.iter() {
+        let payload = base64::encode(&payload);
+        pem.write(b"-----BEGIN ").unwrap();
+        pem.write(tag.as_bytes()).unwrap();
+        pem.write(b" PRIVATE KEY-----\n").unwrap();
+        pem.write(payload.as_bytes()).unwrap();
+        pem.write(b"\n").unwrap();
+        pem.write(b"-----END ").unwrap();
+        pem.write(tag.as_bytes()).unwrap();
+        pem.write(b" PRIVATE KEY-----\n").unwrap();
+        let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
+        assert!(file_info.error.is_some());
+
+    }
 }
