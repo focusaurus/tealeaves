@@ -53,6 +53,19 @@ fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
     return prefix == &data[0..prefix.len()];
 }
 
+#[test]
+fn test_has_prefix() {
+    assert!(has_prefix(b"", b""));
+    assert!(has_prefix(b"", b" abc "));
+    assert!(has_prefix(b"a", b"a"));
+    assert!(has_prefix(b"a", b"ab"));
+
+    // negative tests
+    assert!(!has_prefix(b"ab", b"ba"));
+    assert!(!has_prefix(b"cat", b"dog"));
+    assert!(!has_prefix(b"cat", b"dogcat"));
+}
+
 fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     /*
     byte[]	AUTH_MAGIC
@@ -174,7 +187,7 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
         }
     }
 }
-fn identify_ed25519_public(content: &str) -> io::Result<file_info::SshKey> {
+fn identify_ed25519_public1(content: &str) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
     let mut iterator = content.splitn(3, |c: char| c.is_whitespace());
@@ -190,12 +203,36 @@ fn identify_ed25519_public(content: &str) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
+fn identify_ed25519_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
+    let mut ssh_key = file_info::SshKey::new();
+    ssh_key.is_public = true;
+    let pub_key = parse::public_key(bytes)?;
+    let comment = String::from_utf8(Vec::from(pub_key.comment)).unwrap();
+    ssh_key.comment = Some(comment);
+    if let Some(payload) = pub_key.payload {
+        let mut reader = io::BufReader::new(payload.as_slice());
+
+        let algorithm = read_field(&mut reader).unwrap_or(vec![]);
+        ssh_key.point = Some(read_field(&mut reader).unwrap_or(vec![]));
+        if let Ok(algo) = String::from_utf8(algorithm.clone()) {
+            ssh_key.algorithm = Some(algo);
+        }
+        if has_prefix(b"ssh-ed25519", pub_key.algorithm) {
+            ssh_key.algorithm = Some("ed25519".to_string());
+        }
+    }
+    Ok(ssh_key)
+}
+
 fn identify_rsa_public(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     let mut ssh_key = file_info::SshKey::new();
     ssh_key.is_public = true;
     let pub_key = parse::public_key(bytes)?;
-    ssh_key.algorithm = pub_key.algorithm;
-    ssh_key.comment = pub_key.comment;
+    if pub_key.algorithm == &b"ssh-rsa"[..] {
+        ssh_key.algorithm = Some("rsa".to_string());
+    }
+    let comment = String::from_utf8(Vec::from(pub_key.comment)).unwrap();
+    ssh_key.comment = Some(comment);
     if let Some(payload) = pub_key.payload {
         let mut reader = io::BufReader::new(payload.as_slice());
         let algorithm = read_field(&mut reader).unwrap_or(vec![]);
@@ -299,7 +336,7 @@ pub fn scan<P: Permissions + PermissionsExt,
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
         if bytes.starts_with(b"ssh-ed25519 ") {
-            file_info.ssh_key = Some(identify_ed25519_public(&content)?);
+            file_info.ssh_key = Some(identify_ed25519_public(&bytes)?);
         }
         if bytes.starts_with(b"ssh-rsa ") {
             file_info.ssh_key = Some(identify_rsa_public(&bytes)?);

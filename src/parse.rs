@@ -5,9 +5,9 @@ use nom::IResult;
 use std::io;
 
 #[derive(Debug)]
-pub struct PublicKey {
-    pub algorithm: Option<String>,
-    pub comment: Option<String>,
+pub struct PublicKey<'a> {
+    pub algorithm: &'a [u8],
+    pub comment: &'a [u8],
     pub payload: Option<Vec<u8>>,
 }
 
@@ -33,8 +33,8 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<PublicKey> {
             }
 
             Ok(PublicKey {
-                   algorithm: Some(String::from_utf8_lossy(output.0).into_owned()),
-                   comment: Some(String::from_utf8_lossy(output.2).into_owned()),
+                   algorithm: output.0,
+                   comment: output.2,
                    payload,
                })
         }
@@ -48,5 +48,5 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<PublicKey> {
 #[test]
 fn basics() {
     let key = public_key(&b"ssh-rsa aaaa hey there\n"[..]).unwrap();
-    assert_eq!(key.algorithm.unwrap(), "ssh-rsa");
+    assert_eq!(key.algorithm, &b"ssh-rsa"[..]);
 }
