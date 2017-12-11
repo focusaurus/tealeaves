@@ -1,5 +1,6 @@
 use std::{fmt, path};
 
+#[derive(Debug)]
 pub struct SshKey {
     pub algorithm: Option<String>,
     pub comment: Option<String>,
@@ -50,6 +51,7 @@ impl fmt::Display for SshKey {
     }
 }
 
+#[derive(Debug)]
 pub struct FileInfo {
     pub pem_tag: String,
     pub is_directory: bool,

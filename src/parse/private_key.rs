@@ -54,7 +54,7 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     Ok(ssh_key)
 }
 
-fn get_rsa_length(asn1_bytes: &[u8]) -> usize {
+fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _rsa_version = reader.next().read_i8()?;
@@ -77,8 +77,8 @@ fn get_rsa_length(asn1_bytes: &[u8]) -> usize {
         })
     });
     match asn_result {
-        Ok(bits) => return bits,
-        Err(_) => return 0,
+        Ok(bits) => Ok(bits),
+        Err(error) => Err(error.description().to_string()),
     }
 }
 
@@ -173,8 +173,13 @@ pub fn pem(bytes: &[u8]) -> Result<file_info::SshKey, String> {
                     let mut ssh_key = file_info::SshKey::new();
                     ssh_key.is_public = false;
                     ssh_key.algorithm = Some("rsa".to_string());
-                    ssh_key.key_length = Some(get_rsa_length(&block.data));
-                    return Ok(ssh_key);
+                    return match get_rsa_length(&block.data) {
+                               Ok(length) => {
+                        ssh_key.key_length = Some(length);
+                        Ok(ssh_key)
+                    }
+                               Err(message) => return Err(message),
+                           };
                 }
                 "EC PRIVATE KEY" => {
                     let mut ssh_key = file_info::SshKey::new();

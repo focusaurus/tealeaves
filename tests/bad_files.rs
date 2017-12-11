@@ -6,7 +6,6 @@ use rsfs::GenFS;
 use rsfs::mem::unix::FS;
 use rsfs::mem::unix::Permissions;
 use rsfs::unix_ext::PermissionsExt;
-use std::error::Error;
 use std::io::Write;
 
 fn memfs() -> FS {
@@ -31,7 +30,8 @@ fn unreadable_file_gets_error() {
     let mut unreadable = fs.create_file("/tmp/unreadable").unwrap();
     unreadable.write(&[1, 2, 3, 4]).unwrap();
     for &mode in [0o000, 0o002, 0o020, 0o200, 0o222].iter() {
-        fs.set_permissions("/tmp/unreadable", Permissions::from_mode(mode)).unwrap();
+        fs.set_permissions("/tmp/unreadable", Permissions::from_mode(mode))
+            .unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/unreadable").unwrap();
         assert!(!file_info.is_readable);
     }
@@ -43,7 +43,8 @@ fn readable_file_gets_no_error() {
     let mut readable = fs.create_file("/tmp/readable").unwrap();
     readable.write(&[1, 2, 3, 4]).unwrap();
     for &mode in [0o004, 0o004, 0o040, 0o400, 0o444].iter() {
-        fs.set_permissions("/tmp/readable", Permissions::from_mode(mode)).unwrap();
+        fs.set_permissions("/tmp/readable", Permissions::from_mode(mode))
+            .unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/readable").unwrap();
         assert!(file_info.is_readable);
     }
@@ -62,7 +63,9 @@ fn low_size_gets_error() {
 fn not_pem_gets_detected() {
     let fs = memfs();
     let mut not_pem = fs.create_file("/tmp/not_pem").unwrap();
-    not_pem.write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe").unwrap();
+    not_pem
+        .write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe")
+        .unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
     assert!(!file_info.is_pem);
 }
@@ -79,7 +82,8 @@ AAAEBIhgNOlzPnH3cAul5S0VSrnirdVr6TVDL2gVDXIEu6FTZZL7FhUAK5ObLFAMHIV8Pm
 1F9kWfGrTeXTj61g/ETGAAAAH1RlYWxldmVzIHRlc3QgRUQyNTUxOSBTU0ggS2V5IDEBAg
 MEBQY=
 -----END OPENSSH PRIVATE KEY-----
-").unwrap();
+")
+        .unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
     assert!(file_info.is_pem);
 }
@@ -109,11 +113,35 @@ fn pem_long_field_gets_detected() {
     let bogus_length = "00001001";
     let bin = hex::decode([valid_prefix, bogus_length].concat()).unwrap();
     let base64 = base64::encode(&bin);
-    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n").unwrap();
+    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n")
+        .unwrap();
     pem.write(base64.as_bytes()).unwrap();
     pem.write(b"\n").unwrap();
-    pem.write(b"-----END OPENSSH PRIVATE KEY-----\n").unwrap();
+    pem.write(b"-----END OPENSSH PRIVATE KEY-----\n")
+        .unwrap();
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_ok());
-    assert!(result.unwrap().error.unwrap().contains("Field size too large"));
+    assert!(result
+                .unwrap()
+                .error
+                .unwrap()
+                .contains("Field size too large"));
+}
+
+#[test]
+fn asn1_error_gets_detected() {
+    let fs = memfs();
+    let mut pem = fs.create_file("/tmp/pem").unwrap();
+    let mut payload = vec![0];
+    payload.extend_from_slice(b"ssh-rsa"); // magic prefix
+    payload.extend_from_slice(&[0]); // null byte
+    payload.extend_from_slice(b"this-is-not-asn1");
+    let payload = base64::encode(&payload);
+    pem.write(b"-----BEGIN RSA PRIVATE KEY-----\n").unwrap();
+    pem.write(payload.as_bytes()).unwrap();
+    pem.write(b"\n").unwrap();
+    pem.write(b"-----END RSA PRIVATE KEY-----\n").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
+    println!("HEY ASN1 {:?}", file_info);
+    assert!(file_info.error.is_some());
 }
