@@ -160,7 +160,7 @@ pub fn pem(bytes: &[u8]) -> Option<file_info::SshKey> {
                     return Some(dsa(&block));
                 }
                 "OPENSSH PRIVATE KEY" => {
-                    if parse::has_prefix(&block.data, b"openssh-key-v1") {
+                    if parse::has_prefix(b"openssh-key-v1", &block.data) {
                         return match identify_openssh_v1(&block.data) {
                                    Ok(ssh_key) => Some(ssh_key),
                                    Err(error) => {
