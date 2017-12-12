@@ -92,7 +92,6 @@ impl fmt::Display for FileInfo {
         match self.ssh_key {
             Some(ref key) => {
                 output.push_str(&format!("\t✓ {}", key));
-                println!("FIXME {} {:o}", key.is_public, self.mode.unwrap());
                 if !key.is_public && self.mode.unwrap_or(0o000) & 0o077 != 0o000 {
                     output.push_str("\n\t⚠️ insecure permissions");
                 }

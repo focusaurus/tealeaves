@@ -102,7 +102,7 @@ c1ee72ae81074b0ce0f7e540e051d569
 6536c2e1029438fdd3930beebbc5ac30
 ```
 
-## rsa private key no passphrase
+## rsa private key no passphrase (PEM)
 - PEM wrapper (header, base64 payload, footer)
 - base64 payload is ASN.1
 
@@ -187,6 +187,64 @@ Warning: Input is non-seekable, some functionality has been disabled.
 0 warnings, 0 errors.
 ```
 
+## rsa private key no passphrase openssh-key-v1
+
+```
+6f70656e7373682d6b65792d763100 openssh-key-v1 and null byte
+00000004 int length = 4
+6e6f6e65 string cipher name = "none"
+00000004 int length = 4
+6e6f6e65 string kdfname = "none"
+00000000 int length = 0 (kdf options)
+00000001 int number of keys
+00000097 int length of remaining payload
+00000007 int length = 7
+7373682d727361 string algorithm = "ssh-rsa"
+00000003 int length = 3
+010001 int exponent = 65537
+00000081 int length = 129
+00b2f7f6c3b05306fa916eef80979b
+defc959fd3b62aef43dee6b04a12da5b
+18305f760db7cb4bc19c11a7823f3592
+0cfd62b764f2f3572fb5e90b7c4f9047
+c902c04aae2463fbfabaf45fe44349c1
+8a690b2d28397c26b7f21a71e8ffddda
+3e4e52b7c3bd70da7be272c55e2393ed
+e2a8d35bd28c2ff4d51193540a676b65
+680f0000020867f00c7967f00c790000
+00077373682d7273610000008100b2f7
+f6c3b05306fa916eef80979bdefc959f
+d3b62aef43dee6b04a12da5b18305f76
+0db7cb4bc19c11a7823f35920cfd62b7
+64f2f3572fb5e90b7c4f9047c902c04a
+ae2463fbfabaf45fe44349c18a690b2d
+28397c26b7f21a71e8ffddda3e4e52b7
+c3bd70da7be272c55e2393ede2a8d35b
+d28c2ff4d51193540a676b65680f0000
+000301000100000081009ba24755a5e0
+8e1118a8005f3378b951ae4c6f2fdbe6
+767f40ddcd8cd796a05270b198fc5c2e
+650ff3ca57d9e01c426f978924a0a23d
+0fa082291ad19606d725b8efb83c2847
+d4def077adb7acaf293f135136d39b56
+a461e93953382decd3e5459184eaaa82
+53a8d04922340da1d21660f9441f44b3
+f9f1b96b8f4cb434c901000000410092
+8ec7e47fe0a89903f4262c744cce2f6f
+8f6895959fd4b21fff2e4d3d281d5f2d
+ebcda10ee8c6fcc72dc2125bff27bc8a
+f079cfd74d60d5c99516c4cabe419400
+00004100db39b5975df1635a2b97e213
+4525ba9db1ef73fb85fb79638c953361
+be9095a443f085ed479ca385438d3044
+afb87c56332d04b97b173d681d629cb5
+dfbe3c350000004100d0fd7d2b4747fb
+1a53f69699faa8efed92f37d2b0cd56e
+e30307fdb23d9821e62b914ac44e1fcf
+d5553ad3c23755e2d60fcc51cf379502
+9419acae8e06aff3b30000000a706c79
+6f6e734061766901020304050607
+```
 ## rsa public key
 ```
 cat files/ssh-06-rsa-public-key.pem | cut -d " " -f 2 | base64 -D | xxd -p
