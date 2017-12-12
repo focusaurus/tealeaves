@@ -33,6 +33,7 @@ pub fn scan<P: Permissions + PermissionsExt,
 
     if file_info.is_file {
         let mode = meta.permissions().mode();
+        file_info.mode = Some(mode);
         // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
         file_info.is_readable = mode & 0o444 != 0;
     }

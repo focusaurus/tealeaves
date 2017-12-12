@@ -61,6 +61,7 @@ pub struct FileInfo {
     pub is_size_large: bool,
     pub is_size_medium: bool,
     pub is_size_small: bool,
+    pub mode: Option<u32>,
     pub ssh_key: Option<SshKey>,
     pub path_buf: path::PathBuf,
     pub error: Option<String>,
@@ -77,6 +78,7 @@ impl FileInfo {
             is_size_large: false,
             is_size_medium: false,
             is_size_small: false,
+            mode: None,
             path_buf: path::PathBuf::from("/"),
             pem_tag: "".to_string(),
             ssh_key: None,
@@ -87,20 +89,29 @@ impl FileInfo {
 impl fmt::Display for FileInfo {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
-        if self.is_directory {
-            output.push_str("\t✓ is a directory\n");
-        } else if self.ssh_key.is_some() {
-            output.push_str(&format!("\t✓ {}", self.ssh_key.as_ref().unwrap()));
-        } else if self.is_pem {
-            output.push_str("\t⚠️ unrecognized PEM: ");
-            output.push_str(&self.pem_tag);
-            output.push_str("\n");
-        } else if self.is_size_small {
-            output.push_str("\t⚠️ unrecognized small file\n");
-        } else if self.is_size_large {
-            output.push_str("\t⚠️ unrecognized large file\n");
-        } else if !self.is_readable {
-            output.push_str("\t🔥 missing read permission\n");
+        match self.ssh_key {
+            Some(ref key) => {
+                output.push_str(&format!("\t✓ {}", key));
+                println!("FIXME {} {:o}", key.is_public, self.mode.unwrap());
+                if !key.is_public && self.mode.unwrap_or(0o000) & 0o077 != 0o000 {
+                    output.push_str("\n\t⚠️ insecure permissions");
+                }
+            }
+            None => {
+                if self.is_directory {
+                    output.push_str("\t✓ is a directory\n");
+                } else if self.is_pem {
+                    output.push_str("\t⚠️ unrecognized PEM: ");
+                    output.push_str(&self.pem_tag);
+                    output.push_str("\n");
+                } else if self.is_size_small {
+                    output.push_str("\t⚠️ unrecognized small file\n");
+                } else if self.is_size_large {
+                    output.push_str("\t⚠️ unrecognized large file\n");
+                } else if !self.is_readable {
+                    output.push_str("\t🔥 missing read permission\n");
+                }
+            }
         }
         write!(out,
                "{}\n{}\n",
