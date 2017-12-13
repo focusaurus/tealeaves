@@ -4,7 +4,7 @@ use std::{fmt, path};
 pub enum Algorithm {
     Unknown,
     Ed25519,
-    Rsa,
+    Rsa(usize),
     Ecdsa,
     Dsa,
 }
@@ -42,12 +42,12 @@ impl fmt::Display for SshKey {
             output.push_str("private ");
         }
         output.push_str("ssh key (");
-        output.push_str(match self.algorithm {
-                            Algorithm::Ed25519 => "ed25519",
-                            Algorithm::Ecdsa => "ecdsa",
-                            Algorithm::Rsa => "rsa",
-                            Algorithm::Dsa => "dsa",
-                            Algorithm::Unknown => "unknown",
+        output.push_str(&match self.algorithm {
+                            Algorithm::Ed25519 => "ed25519".to_string(),
+                            Algorithm::Ecdsa => "ecdsa".to_string(),
+                            Algorithm::Rsa(ref length) => format!("rsa, {} bits", length),
+                            Algorithm::Dsa => "dsa".to_string(),
+                            Algorithm::Unknown => "unknown".to_string(),
                         });
         if self.key_length.is_some() {
             output.push_str(&format!(", {} bits", self.key_length.unwrap()));
@@ -107,8 +107,8 @@ impl fmt::Display for FileInfo {
             Some(ref key) => {
                 output.push_str(&format!("\t✓ {}", key));
                 match key.algorithm {
-                    Algorithm::Rsa => {
-                        if key.key_length.unwrap_or(2048) < 2048 {
+                    Algorithm::Rsa(length) => {
+                        if length < 2048 {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
@@ -199,9 +199,8 @@ fn test_file_info_display_rsa_public() {
     file_info.is_readable = true;
     file_info.is_size_medium = true;
     let mut ssh_key = SshKey::new();
-    ssh_key.algorithm = Algorithm::Rsa;
+    ssh_key.algorithm = Algorithm::Rsa(2048);
     ssh_key.is_public = true;
-    ssh_key.key_length = Some(2048);
     file_info.ssh_key = Some(ssh_key);
     assert_eq!("/unit-test\n\t✓ public ssh key (rsa, 2048 bits)\n",
                format!("{}", file_info));

@@ -30,10 +30,9 @@ fn rsa_1024_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(1024));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, Some(1024));
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {
@@ -49,10 +48,9 @@ fn rsa_2048_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(2048));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, Some(2048));
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {

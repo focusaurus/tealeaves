@@ -106,11 +106,10 @@ fn rsa_1024_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(1024));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, Some(1024));
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));
@@ -125,11 +124,10 @@ fn rsa_2048_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(2048));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, Some(2048));
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));
@@ -144,11 +142,10 @@ fn rsa_4096_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(4096));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, Some(4096));
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));

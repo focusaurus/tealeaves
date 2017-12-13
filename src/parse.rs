@@ -89,11 +89,11 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-rsa" => {
-            ssh_key.algorithm = Algorithm::Rsa;
+            ssh_key.algorithm = Algorithm::Rsa(0);
             if !ssh_key.is_encrypted {
                 let _rsa_version = read_field(&mut reader)?;
                 let modulus = read_field(&mut reader)?;
-                ssh_key.key_length = Some(bit_count(modulus));
+                ssh_key.algorithm = Algorithm::Rsa(bit_count(modulus));
             }
         }
         b"ssh-dss" => {
@@ -214,7 +214,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             ssh_key.algorithm = match block.block_type {
                 "DSA PRIVATE KEY" => Algorithm::Dsa,
                 "EC PRIVATE KEY" => Algorithm::Ecdsa,
-                "RSA PRIVATE KEY" => Algorithm::Rsa,
+                "RSA PRIVATE KEY" => Algorithm::Rsa(0),
                 _ => Algorithm::Unknown,
             };
             if ssh_key.is_encrypted {
@@ -226,7 +226,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                     ssh_key.key_length = Some(get_dsa_length(&block.data)?);
                 }
                 "RSA PRIVATE KEY" => {
-                    ssh_key.key_length = Some(get_rsa_length(&block.data)?);
+                    ssh_key.algorithm = Algorithm::Rsa(get_rsa_length(&block.data)?);
                 }
                 "EC PRIVATE KEY" => {
                     ssh_key.key_length = Some(get_ecdsa_length(&block.data)?);
@@ -281,10 +281,9 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
             ssh_key.key_length = Some(bit_count(int1));
         }
         b"ssh-rsa" => {
-            ssh_key.algorithm = Algorithm::Rsa;
             let _exponent = read_field(&mut reader).unwrap_or(vec![]);
             let modulus = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.key_length = Some(bit_count(modulus));
+            ssh_key.algorithm = Algorithm::Rsa(bit_count(modulus));
         }
         _ => (),
     }
