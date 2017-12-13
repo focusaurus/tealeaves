@@ -2,6 +2,7 @@ extern crate tealeaves;
 use std::fs;
 use std::io::Read;
 use tealeaves::parse::private_key;
+use tealeaves::file_info::Algorithm;
 
 #[test]
 fn dsa_1024_private_clear() {
@@ -10,7 +11,7 @@ fn dsa_1024_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("dsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Dsa);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -29,7 +30,7 @@ fn dsa_1024_private_passphrase() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("dsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Dsa);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, true);
             assert_eq!(ssh_key.comment, None);
@@ -48,7 +49,7 @@ fn ecdsa_256_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ecdsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -67,7 +68,7 @@ fn ed25519_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ed25519".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ed25519);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -86,7 +87,7 @@ fn ed25519_private_passphrase() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ed25519".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ed25519);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, true);
             assert_eq!(ssh_key.comment, None);
@@ -105,7 +106,7 @@ fn rsa_1024_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("rsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -124,7 +125,7 @@ fn rsa_2048_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("rsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -143,7 +144,7 @@ fn rsa_4096_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("rsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);

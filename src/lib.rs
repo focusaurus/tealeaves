@@ -1,9 +1,9 @@
 extern crate base64;
 extern crate byteorder;
 extern crate nom_pem;
-extern crate yasna;
 extern crate rsfs;
-mod file_info;
+extern crate yasna;
+pub mod file_info;
 pub mod parse;
 use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};

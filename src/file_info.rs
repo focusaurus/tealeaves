@@ -1,8 +1,18 @@
 use std::{fmt, path};
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum Algorithm {
+    Unknown,
+    Ed25519,
+    Rsa,
+    Ecdsa,
+    Dsa,
+}
+
 #[derive(Debug)]
 pub struct SshKey {
-    pub algorithm: Option<String>,
+    // pub algorithm: Option<String>,
+    pub algorithm: Algorithm,
     pub comment: Option<String>,
     pub is_encrypted: bool,
     pub is_public: bool,
@@ -13,7 +23,7 @@ pub struct SshKey {
 impl SshKey {
     pub fn new() -> Self {
         Self {
-            algorithm: None,
+            algorithm: Algorithm::Unknown,
             comment: None,
             is_encrypted: false,
             is_public: false,
@@ -32,9 +42,13 @@ impl fmt::Display for SshKey {
             output.push_str("private ");
         }
         output.push_str("ssh key (");
-        if self.algorithm.is_some() {
-            output.push_str(self.algorithm.as_ref().unwrap());
-        }
+        output.push_str(match self.algorithm {
+                            Algorithm::Ed25519 => "ed25519",
+                            Algorithm::Ecdsa => "ecdsa",
+                            Algorithm::Rsa => "rsa",
+                            Algorithm::Dsa => "dsa",
+                            Algorithm::Unknown => "unknown",
+                        });
         if self.key_length.is_some() {
             output.push_str(&format!(", {} bits", self.key_length.unwrap()));
         }
@@ -92,17 +106,19 @@ impl fmt::Display for FileInfo {
         match self.ssh_key {
             Some(ref key) => {
                 output.push_str(&format!("\t✓ {}", key));
-                if key.algorithm == Some("rsa".to_string()) &&
-                   key.key_length.unwrap_or(2048) < 2048 {
-                    output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
-                }
-                if key.algorithm == Some("dsa".to_string()) {
-                    output.push_str("\n\t⚠️ dsa keys are considered insecure");
-
-                }
-                if key.algorithm == Some("ecdsa".to_string()) {
-                    output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
-
+                match key.algorithm {
+                    Algorithm::Rsa => {
+                        if key.key_length.unwrap_or(2048) < 2048 {
+                            output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
+                        }
+                    }
+                    Algorithm::Dsa => {
+                        output.push_str("\n\t⚠️ dsa keys are considered insecure");
+                    }
+                    Algorithm::Ecdsa => {
+                        output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
+                    }
+                    _ => (),
                 }
                 if !key.is_public && self.mode.unwrap_or(0o000) & 0o077 != 0o000 {
                     output.push_str("\n\t⚠️ insecure permissions");
@@ -144,7 +160,7 @@ fn test_file_info_display_encrypted_ed25519() {
     file_info.is_readable = true;
     file_info.is_size_medium = true;
     let mut ssh_key = SshKey::new();
-    ssh_key.algorithm = Some("ed25519".to_string());
+    ssh_key.algorithm = Algorithm::Ed25519;
     ssh_key.is_public = false;
     ssh_key.is_encrypted = true;
     file_info.ssh_key = Some(ssh_key);
@@ -162,7 +178,7 @@ fn test_file_info_display_encrypted_ecdsa() {
     file_info.is_readable = true;
     file_info.is_size_medium = true;
     let mut ssh_key = SshKey::new();
-    ssh_key.algorithm = Some("ecdsa".to_string());
+    ssh_key.algorithm = Algorithm::Ecdsa;
     ssh_key.is_public = false;
     ssh_key.is_encrypted = false;
     ssh_key.key_length = Some(384);
@@ -183,7 +199,7 @@ fn test_file_info_display_rsa_public() {
     file_info.is_readable = true;
     file_info.is_size_medium = true;
     let mut ssh_key = SshKey::new();
-    ssh_key.algorithm = Some("rsa".to_string());
+    ssh_key.algorithm = Algorithm::Rsa;
     ssh_key.is_public = true;
     ssh_key.key_length = Some(2048);
     file_info.ssh_key = Some(ssh_key);

@@ -1,7 +1,7 @@
 extern crate byteorder;
 use base64;
 use byteorder::{BigEndian, ReadBytesExt};
-use file_info;
+use file_info::{Algorithm,SshKey};
 use nom_pem;
 use nom_pem::headers::{HeaderEntry, ProcTypeType};
 use nom::IResult;
@@ -61,7 +61,7 @@ fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
     Ok(word)
 }
 
-fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
+fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
     /*
     byte[]	AUTH_MAGIC
     string	ciphername
@@ -73,7 +73,7 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     */
 
     let prefix = b"openssh-key-v1";
-    let mut ssh_key = file_info::SshKey::new();
+    let mut ssh_key = SshKey::new();
     // Make a reader for everything after the prefix plus the null byte
     let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
     let cipher_name = read_field(&mut reader)?;
@@ -84,13 +84,12 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     let _key_length = reader.read_u32::<BigEndian>()?;
     let key_type = read_field(&mut reader)?;
     ssh_key.is_encrypted = cipher_name.as_slice() != b"none";
-
     match key_type.as_slice() {
         b"ssh-ed25519" => {
-            ssh_key.algorithm = Some("ed25519".to_string());
+            ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-rsa" => {
-            ssh_key.algorithm = Some("rsa".to_string());
+            ssh_key.algorithm = Algorithm::Rsa;
             if !ssh_key.is_encrypted {
                 let _rsa_version = read_field(&mut reader)?;
                 let modulus = read_field(&mut reader)?;
@@ -98,26 +97,26 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
             }
         }
         b"ssh-dss" => {
-            ssh_key.algorithm = Some("dsa".to_string());
+            ssh_key.algorithm = Algorithm::Dsa;
             if !ssh_key.is_encrypted {
                 let int2 = read_field(&mut reader)?;
                 ssh_key.key_length = Some(bit_count(int2));
             }
         }
         b"ecdsa-sha2-nistp256" => {
-            ssh_key.algorithm = Some("ecdsa".to_string());
+            ssh_key.algorithm = Algorithm::Ecdsa;
             ssh_key.key_length = Some(256);
         }
         b"ecdsa-sha2-nistp384" => {
-            ssh_key.algorithm = Some("ecdsa".to_string());
+            ssh_key.algorithm = Algorithm::Ecdsa;
             ssh_key.key_length = Some(384);
         }
         b"ecdsa-sha2-nistp521" => {
-            ssh_key.algorithm = Some("ecdsa".to_string());
+            ssh_key.algorithm = Algorithm::Ecdsa;
             ssh_key.key_length = Some(521);
         }
         _ => {
-            ssh_key.algorithm = None;
+            ssh_key.algorithm = Algorithm::Unknown;
         }
     };
     if ssh_key.is_encrypted {
@@ -207,16 +206,16 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     }
 }
 
-pub fn private_key(bytes: &[u8]) -> Result<file_info::SshKey, String> {
+pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_pem::decode_block(&bytes) {
         Ok(block) => {
-            let mut ssh_key = file_info::SshKey::new();
+            let mut ssh_key = SshKey::new();
             ssh_key.is_encrypted = is_encrypted(&block.headers);
             ssh_key.algorithm = match block.block_type {
-                "DSA PRIVATE KEY" => Some("dsa".to_string()),
-                "RSA PRIVATE KEY" => Some("rsa".to_string()),
-                "EC PRIVATE KEY" => Some("ecdsa".to_string()),
-                _ => None,
+                "DSA PRIVATE KEY" => Algorithm::Dsa,
+                "EC PRIVATE KEY" => Algorithm::Ecdsa,
+                "RSA PRIVATE KEY" => Algorithm::Rsa,
+                _ => Algorithm::Unknown,
             };
             if ssh_key.is_encrypted {
                 // Can't determine details without passphrase
@@ -257,32 +256,32 @@ pub fn private_key(bytes: &[u8]) -> Result<file_info::SshKey, String> {
     }
 }
 
-fn algo_and_length(ssh_key: &mut file_info::SshKey, bytes: &[u8]) {
+fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
     let mut reader = io::BufReader::new(bytes);
     let algorithm = read_field(&mut reader).unwrap_or(vec![]);
     match algorithm.as_slice() {
         b"ecdsa-sha2-nistp256" => {
-            ssh_key.algorithm = Some("ecdsa".to_string());
+            ssh_key.algorithm = Algorithm::Ecdsa;
             ssh_key.key_length = Some(256);
         }
         b"ecdsa-sha2-nistp384" => {
-            ssh_key.algorithm = Some("ecdsa".to_string());
+            ssh_key.algorithm = Algorithm::Ecdsa;
             ssh_key.key_length = Some(384);
         }
         b"ecdsa-sha2-nistp521" => {
-            ssh_key.algorithm = Some("ecdsa".to_string());
+            ssh_key.algorithm = Algorithm::Ecdsa;
             ssh_key.key_length = Some(521);
         }
         b"ssh-ed25519" => {
-            ssh_key.algorithm = Some("ed25519".to_string());
+            ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-dss" => {
-            ssh_key.algorithm = Some("dsa".to_string());
+            ssh_key.algorithm = Algorithm::Dsa;
             let int1 = read_field(&mut reader).unwrap_or(vec![]);
             ssh_key.key_length = Some(bit_count(int1));
         }
         b"ssh-rsa" => {
-            ssh_key.algorithm = Some("rsa".to_string());
+            ssh_key.algorithm = Algorithm::Rsa;
             let _exponent = read_field(&mut reader).unwrap_or(vec![]);
             let modulus = read_field(&mut reader).unwrap_or(vec![]);
             ssh_key.key_length = Some(bit_count(modulus));
@@ -291,7 +290,7 @@ fn algo_and_length(ssh_key: &mut file_info::SshKey, bytes: &[u8]) {
     }
 }
 
-pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<file_info::SshKey> {
+pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<SshKey> {
     named!(space_sep, is_a_s!(" \t"));
     named!(value, is_not_s!(" \t"));
     named!(public_key<(&[u8], &[u8], &[u8])>,
@@ -306,9 +305,8 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<file_info::SshKey> {
     );
     match public_key(bytes) {
         IResult::Done(_input, (algorithm, payload, comment)) => {
-            let mut ssh_key = file_info::SshKey::new();
+            let mut ssh_key = SshKey::new();
             ssh_key.is_public = true;
-            ssh_key.algorithm = Some(String::from_utf8_lossy(&algorithm).into_owned());
             ssh_key.comment = Some(String::from_utf8_lossy(&comment).into_owned());
             let result = base64::decode(payload);
             if let Ok(decoded) = result {

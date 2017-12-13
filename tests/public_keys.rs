@@ -1,8 +1,7 @@
 extern crate tealeaves;
-
 use std::fs;
 use std::io::Read;
-
+use tealeaves::file_info::Algorithm;
 use tealeaves::parse::public_key;
 
 #[test]
@@ -12,7 +11,7 @@ fn ed25519_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ed25519".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ed25519);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, None);
@@ -31,7 +30,7 @@ fn rsa_1024_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("rsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(1024));
@@ -50,7 +49,7 @@ fn rsa_2048_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("rsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Rsa);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(2048));
@@ -69,7 +68,7 @@ fn dsa_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("dsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Dsa);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(1024));
@@ -88,7 +87,7 @@ fn ecdsa_256_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ecdsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(256));
@@ -107,7 +106,7 @@ fn ecdsa_384_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ecdsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(384));
@@ -126,7 +125,7 @@ fn ecdsa_521_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Some("ecdsa".to_string()));
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(521));
