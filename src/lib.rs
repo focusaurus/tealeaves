@@ -4,7 +4,7 @@ extern crate nom_pem;
 extern crate yasna;
 extern crate rsfs;
 mod file_info;
-mod parse;
+pub mod parse;
 use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
@@ -63,7 +63,7 @@ pub fn scan<P: Permissions + PermissionsExt,
         if bytes.starts_with(b"ssh-dss ") {
             file_info.ssh_key = Some(parse::public_key::dsa(&bytes)?);
         }
-        if bytes.starts_with(b"ecdsa-") {
+        if bytes.starts_with(b"ecdsa-sha2-nistp") {
             file_info.ssh_key = Some(parse::public_key::ecdsa(&bytes)?);
         }
         if bytes.starts_with(b"-----BEGIN ") {
