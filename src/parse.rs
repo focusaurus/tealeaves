@@ -304,7 +304,7 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<SshKey> {
       )
     );
     match public_key(bytes) {
-        IResult::Done(_input, (algorithm, payload, comment)) => {
+        IResult::Done(_input, (_label, payload, comment)) => {
             let mut ssh_key = SshKey::new();
             ssh_key.is_public = true;
             ssh_key.comment = Some(String::from_utf8_lossy(&comment).into_owned());
