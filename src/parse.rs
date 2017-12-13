@@ -323,36 +323,3 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<file_info::SshKey> {
         }
     }
 }
-
-// fn read_length(ssh_key: &mut file_info::SshKey, bytes: &[u8]) {
-//     let mut reader = io::BufReader::new(bytes);
-//     match ssh_key.algorithm {
-//         Some("ecdsa-sha2-nistp256") => {
-//             ssh_key.algorithm = Some("ecdsa".to_string());
-//             ssh_key.key_length = Some(256);
-//         }
-//         Some("ecdsa-sha2-nistp384") => {
-//             ssh_key.algorithm = Some("ecdsa".to_string());
-//             ssh_key.key_length = Some(384);
-//         }
-//         Some("ecdsa-sha2-nistp521") => {
-//             ssh_key.algorithm = Some("ecdsa".to_string());
-//             ssh_key.key_length = Some(521);
-//         }
-//         Some("ssh-ed25519") => {
-//             ssh_key.algorithm = Some("ed25519".to_string());
-//         }
-//         Some("ssh-dss") => {
-//             ssh_key.algorithm = Some("dsa".to_string());
-//             let int1 = read_field(&mut reader).unwrap_or(vec![]);
-//             ssh_key.key_length = Some(bit_count(int1));
-//         }
-//         Some("ssh-rsa") => {
-//             ssh_key.algorithm = Some("rsa".to_string());
-//             let _exponent = read_field(&mut reader).unwrap_or(vec![]);
-//             let modulus = read_field(&mut reader).unwrap_or(vec![]);
-//             ssh_key.key_length = Some(bit_count(modulus));
-//         }
-//         _ => (),
-//     }
-// }
