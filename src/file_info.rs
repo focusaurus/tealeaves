@@ -95,6 +95,9 @@ impl fmt::Display for FileInfo {
                 if !key.is_public && self.mode.unwrap_or(0o000) & 0o077 != 0o000 {
                     output.push_str("\n\t⚠️ insecure permissions");
                 }
+                if !key.is_public && key.algorithm == Some("rsa".to_string()) && key.key_length.unwrap_or(0) < 2048 {
+                    output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
+                }
             }
             None => {
                 if self.is_directory {
