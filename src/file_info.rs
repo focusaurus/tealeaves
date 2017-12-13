@@ -92,13 +92,23 @@ impl fmt::Display for FileInfo {
         match self.ssh_key {
             Some(ref key) => {
                 output.push_str(&format!("\t✓ {}", key));
+                if key.algorithm == Some("rsa".to_string()) &&
+                   key.key_length.unwrap_or(2048) < 2048 {
+                    output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
+                }
+                if key.algorithm == Some("dsa".to_string()) {
+                    output.push_str("\n\t⚠️ dsa keys are considered insecure");
+
+                }
+                if key.algorithm == Some("ecdsa".to_string()) {
+                    output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
+
+                }
                 if !key.is_public && self.mode.unwrap_or(0o000) & 0o077 != 0o000 {
                     output.push_str("\n\t⚠️ insecure permissions");
                 }
-                if !key.is_public && key.algorithm == Some("rsa".to_string()) && key.key_length.unwrap_or(0) < 2048 {
-                    output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
-                }
             }
+
             None => {
                 if self.is_directory {
                     output.push_str("\t✓ is a directory\n");
@@ -139,6 +149,7 @@ fn test_file_info_display_encrypted_ed25519() {
     assert_eq!(format!("{}", file_info),
                "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
 }
+
 #[test]
 fn test_file_info_display_encrypted_ecdsa() {
     let mut file_info = FileInfo::new();
@@ -155,7 +166,10 @@ fn test_file_info_display_encrypted_ecdsa() {
     ssh_key.key_length = Some(384);
     file_info.ssh_key = Some(ssh_key);
     assert_eq!(format!("{}", file_info),
-               "/unit-test\n\t✓ private ssh key (ecdsa, 384 bits, not encrypted)\n");
+               "/unit-test
+\t✓ private ssh key (ecdsa, 384 bits, not encrypted)
+\t⚠️ ecdsa keys are considered insecure
+");
 }
 
 #[test]
