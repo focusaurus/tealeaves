@@ -71,9 +71,9 @@ pub fn scan<P: Permissions + PermissionsExt,
                 Ok(key) => file_info.ssh_key = Some(key),
                 Err(message) => file_info.error = Some(message),
             }
-        }
-        if file_info.ssh_key.is_some() {
-            file_info.is_pem = true;
+            if file_info.ssh_key.is_some() {
+                file_info.is_pem = true;
+            }
         }
     }
     let mut path_buf = PathBuf::new();

@@ -60,6 +60,15 @@ fn low_size_gets_error() {
 }
 
 #[test]
+fn prefix_then_bogus_gets_error() {
+    let fs = memfs();
+    let mut file = fs.create_file("/tmp/prefix_the_bogus").unwrap();
+    file.write(b"ssh-rsa is a cool kind of file").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/prefix_the_bogus").unwrap();
+    assert!(file_info.ssh_key.is_none());
+}
+
+#[test]
 fn not_pem_gets_detected() {
     let fs = memfs();
     let mut not_pem = fs.create_file("/tmp/not_pem").unwrap();
@@ -149,6 +158,5 @@ fn asn1_error_gets_detected() {
         pem.write(b" PRIVATE KEY-----\n").unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
         assert!(file_info.error.is_some());
-
     }
 }
