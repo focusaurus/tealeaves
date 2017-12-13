@@ -111,17 +111,17 @@ impl fmt::Display for FileInfo {
 
             None => {
                 if self.is_directory {
-                    output.push_str("\t✓ is a directory\n");
+                    output.push_str("\t✓ is a directory");
                 } else if self.is_pem {
                     output.push_str("\t⚠️ unrecognized PEM: ");
                     output.push_str(&self.pem_tag);
                     output.push_str("\n");
                 } else if self.is_size_small {
-                    output.push_str("\t⚠️ unrecognized small file\n");
+                    output.push_str("\t⚠️ unrecognized small file");
                 } else if self.is_size_large {
-                    output.push_str("\t⚠️ unrecognized large file\n");
+                    output.push_str("\t⚠️ unrecognized large file");
                 } else if !self.is_readable {
-                    output.push_str("\t🔥 missing read permission\n");
+                    output.push_str("\t🔥 missing read permission");
                 }
             }
         }
