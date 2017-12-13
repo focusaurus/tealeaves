@@ -5,7 +5,7 @@ pub enum Algorithm {
     Unknown,
     Ed25519,
     Rsa(usize),
-    Ecdsa,
+    Ecdsa(usize),
     Dsa(usize),
 }
 
@@ -16,7 +16,6 @@ pub struct SshKey {
     pub comment: Option<String>,
     pub is_encrypted: bool,
     pub is_public: bool,
-    pub key_length: Option<usize>,
     pub point: Option<Vec<u8>>,
 }
 
@@ -27,7 +26,6 @@ impl SshKey {
             comment: None,
             is_encrypted: false,
             is_public: false,
-            key_length: None,
             point: None,
         }
     }
@@ -43,15 +41,12 @@ impl fmt::Display for SshKey {
         }
         output.push_str("ssh key (");
         output.push_str(&match self.algorithm {
-                            Algorithm::Ed25519 => "ed25519".to_string(),
-                            Algorithm::Ecdsa => "ecdsa".to_string(),
-                            Algorithm::Rsa(ref length) => format!("rsa, {} bits", length),
-                            Algorithm::Dsa(ref length) => format!("dsa, {} bits", length),
-                            Algorithm::Unknown => "unknown".to_string(),
-                        });
-        if self.key_length.is_some() {
-            output.push_str(&format!(", {} bits", self.key_length.unwrap()));
-        }
+                             Algorithm::Ed25519 => "ed25519".to_string(),
+                             Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
+                             Algorithm::Rsa(ref length) => format!("rsa, {} bits", length),
+                             Algorithm::Dsa(ref length) => format!("dsa, {} bits", length),
+                             Algorithm::Unknown => "unknown".to_string(),
+                         });
         if !self.is_public {
             output.push_str(", ");
             if self.is_encrypted {
@@ -115,7 +110,7 @@ impl fmt::Display for FileInfo {
                     Algorithm::Dsa(_) => {
                         output.push_str("\n\t⚠️ dsa keys are considered insecure");
                     }
-                    Algorithm::Ecdsa => {
+                    Algorithm::Ecdsa(_) => {
                         output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
                     }
                     _ => (),
@@ -178,14 +173,13 @@ fn test_file_info_display_encrypted_ecdsa() {
     file_info.is_readable = true;
     file_info.is_size_medium = true;
     let mut ssh_key = SshKey::new();
-    ssh_key.algorithm = Algorithm::Ecdsa;
+    ssh_key.algorithm = Algorithm::Ecdsa(384);
     ssh_key.is_public = false;
     ssh_key.is_encrypted = false;
-    ssh_key.key_length = Some(384);
     file_info.ssh_key = Some(ssh_key);
     assert_eq!(format!("{}", file_info),
                "/unit-test
-\t✓ private ssh key (ecdsa, 384 bits, not encrypted)
+\t✓ private ssh key (ecdsa, curve p384, not encrypted)
 \t⚠️ ecdsa keys are considered insecure
 ");
 }

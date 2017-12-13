@@ -104,16 +104,13 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             }
         }
         b"ecdsa-sha2-nistp256" => {
-            ssh_key.algorithm = Algorithm::Ecdsa;
-            ssh_key.key_length = Some(256);
+            ssh_key.algorithm = Algorithm::Ecdsa(256);
         }
         b"ecdsa-sha2-nistp384" => {
-            ssh_key.algorithm = Algorithm::Ecdsa;
-            ssh_key.key_length = Some(384);
+            ssh_key.algorithm = Algorithm::Ecdsa(384);
         }
         b"ecdsa-sha2-nistp521" => {
-            ssh_key.algorithm = Algorithm::Ecdsa;
-            ssh_key.key_length = Some(521);
+            ssh_key.algorithm = Algorithm::Ecdsa(521);
         }
         _ => {
             ssh_key.algorithm = Algorithm::Unknown;
@@ -213,7 +210,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             ssh_key.is_encrypted = is_encrypted(&block.headers);
             ssh_key.algorithm = match block.block_type {
                 "DSA PRIVATE KEY" => Algorithm::Dsa(1024),
-                "EC PRIVATE KEY" => Algorithm::Ecdsa,
+                "EC PRIVATE KEY" => Algorithm::Ecdsa(0),
                 "RSA PRIVATE KEY" => Algorithm::Rsa(0),
                 _ => Algorithm::Unknown,
             };
@@ -223,13 +220,13 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             }
             match block.block_type {
                 "DSA PRIVATE KEY" => {
-                    ssh_key.key_length = Some(get_dsa_length(&block.data)?);
+                    ssh_key.algorithm = Algorithm::Dsa(get_dsa_length(&block.data)?);
                 }
                 "RSA PRIVATE KEY" => {
                     ssh_key.algorithm = Algorithm::Rsa(get_rsa_length(&block.data)?);
                 }
                 "EC PRIVATE KEY" => {
-                    ssh_key.key_length = Some(get_ecdsa_length(&block.data)?);
+                    ssh_key.algorithm = Algorithm::Ecdsa(get_ecdsa_length(&block.data)?);
                 }
                 "OPENSSH PRIVATE KEY" => {
                     if has_prefix(b"openssh-key-v1", &block.data) {
@@ -261,24 +258,20 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
     let algorithm = read_field(&mut reader).unwrap_or(vec![]);
     match algorithm.as_slice() {
         b"ecdsa-sha2-nistp256" => {
-            ssh_key.algorithm = Algorithm::Ecdsa;
-            ssh_key.key_length = Some(256);
+            ssh_key.algorithm = Algorithm::Ecdsa(256);
         }
         b"ecdsa-sha2-nistp384" => {
-            ssh_key.algorithm = Algorithm::Ecdsa;
-            ssh_key.key_length = Some(384);
+            ssh_key.algorithm = Algorithm::Ecdsa(384);
         }
         b"ecdsa-sha2-nistp521" => {
-            ssh_key.algorithm = Algorithm::Ecdsa;
-            ssh_key.key_length = Some(521);
+            ssh_key.algorithm = Algorithm::Ecdsa(521);
         }
         b"ssh-ed25519" => {
             ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-dss" => {
-            ssh_key.algorithm = Algorithm::Dsa(1024);
             let int1 = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.key_length = Some(bit_count(int1));
+            ssh_key.algorithm = Algorithm::Dsa(bit_count(int1));
         }
         b"ssh-rsa" => {
             let _exponent = read_field(&mut reader).unwrap_or(vec![]);

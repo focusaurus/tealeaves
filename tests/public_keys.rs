@@ -14,7 +14,6 @@ fn ed25519_public() {
             assert_eq!(ssh_key.algorithm, Algorithm::Ed25519);
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, None);
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {
@@ -69,7 +68,6 @@ fn dsa_public() {
             assert_eq!(ssh_key.algorithm, Algorithm::Dsa(1024));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, Some(1024));
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {
@@ -85,10 +83,9 @@ fn ecdsa_256_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(256));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, Some(256));
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {
@@ -104,10 +101,9 @@ fn ecdsa_384_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(384));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, Some(384));
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {
@@ -123,10 +119,9 @@ fn ecdsa_521_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(521));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
-            assert_eq!(ssh_key.key_length, Some(521));
             assert_eq!(ssh_key.is_encrypted, false);
         }
         Err(error) => {

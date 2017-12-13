@@ -47,11 +47,10 @@ fn ecdsa_256_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(256));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, Some(256));
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));
@@ -70,7 +69,6 @@ fn ed25519_private_clear() {
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, None);
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));
@@ -89,7 +87,6 @@ fn ed25519_private_passphrase() {
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, true);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, None);
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));
