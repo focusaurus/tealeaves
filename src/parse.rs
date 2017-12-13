@@ -85,7 +85,6 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<file_info::SshKey> {
     let key_type = read_field(&mut reader)?;
     ssh_key.is_encrypted = cipher_name.as_slice() != b"none";
 
-    println!("key type {:?}", String::from_utf8_lossy(&key_type));
     match key_type.as_slice() {
         b"ssh-ed25519" => {
             ssh_key.algorithm = Some("ed25519".to_string());
@@ -145,7 +144,7 @@ fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     match asn_result {
         Ok(bits) => Ok(bits),
         Err(error) => {
-            println!("ERROR {:?}", error);
+            // println!("ERROR {:?}", error);
             Err(error.description().to_string())
         }
     }
@@ -167,7 +166,7 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     match asn_result {
         Ok(bits) => Ok(bits),
         Err(error) => {
-            println!("ERROR {:?}", error);
+            // println!("ERROR {:?}", error);
             Err(error.description().to_string())
         }
     }
