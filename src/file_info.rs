@@ -6,7 +6,7 @@ pub enum Algorithm {
     Ed25519,
     Rsa(usize),
     Ecdsa,
-    Dsa,
+    Dsa(usize),
 }
 
 #[derive(Debug)]
@@ -46,7 +46,7 @@ impl fmt::Display for SshKey {
                             Algorithm::Ed25519 => "ed25519".to_string(),
                             Algorithm::Ecdsa => "ecdsa".to_string(),
                             Algorithm::Rsa(ref length) => format!("rsa, {} bits", length),
-                            Algorithm::Dsa => "dsa".to_string(),
+                            Algorithm::Dsa(ref length) => format!("dsa, {} bits", length),
                             Algorithm::Unknown => "unknown".to_string(),
                         });
         if self.key_length.is_some() {
@@ -112,7 +112,7 @@ impl fmt::Display for FileInfo {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
-                    Algorithm::Dsa => {
+                    Algorithm::Dsa(_) => {
                         output.push_str("\n\t⚠️ dsa keys are considered insecure");
                     }
                     Algorithm::Ecdsa => {

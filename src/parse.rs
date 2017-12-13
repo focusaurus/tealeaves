@@ -97,10 +97,10 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             }
         }
         b"ssh-dss" => {
-            ssh_key.algorithm = Algorithm::Dsa;
+            ssh_key.algorithm = Algorithm::Dsa(1024);
             if !ssh_key.is_encrypted {
                 let int2 = read_field(&mut reader)?;
-                ssh_key.key_length = Some(bit_count(int2));
+                ssh_key.algorithm = Algorithm::Dsa(bit_count(int2));
             }
         }
         b"ecdsa-sha2-nistp256" => {
@@ -212,7 +212,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             let mut ssh_key = SshKey::new();
             ssh_key.is_encrypted = is_encrypted(&block.headers);
             ssh_key.algorithm = match block.block_type {
-                "DSA PRIVATE KEY" => Algorithm::Dsa,
+                "DSA PRIVATE KEY" => Algorithm::Dsa(1024),
                 "EC PRIVATE KEY" => Algorithm::Ecdsa,
                 "RSA PRIVATE KEY" => Algorithm::Rsa(0),
                 _ => Algorithm::Unknown,
@@ -276,7 +276,7 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
             ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-dss" => {
-            ssh_key.algorithm = Algorithm::Dsa;
+            ssh_key.algorithm = Algorithm::Dsa(1024);
             let int1 = read_field(&mut reader).unwrap_or(vec![]);
             ssh_key.key_length = Some(bit_count(int1));
         }

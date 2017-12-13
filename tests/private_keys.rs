@@ -11,11 +11,10 @@ fn dsa_1024_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Dsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Dsa(1024));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, Some(1024));
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));
@@ -30,11 +29,10 @@ fn dsa_1024_private_passphrase() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Dsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Dsa(1024));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, true);
             assert_eq!(ssh_key.comment, None);
-            assert_eq!(ssh_key.key_length, None);
         }
         Err(error) => {
             assert!(false, format!("Failed to parse: {}", error));

@@ -66,7 +66,7 @@ fn dsa_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Dsa);
+            assert_eq!(ssh_key.algorithm, Algorithm::Dsa(1024));
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, Some(1024));
