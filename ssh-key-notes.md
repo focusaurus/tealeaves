@@ -5,20 +5,22 @@
 OpenSSH supports the following key types
 
 - ed25519
-  - private key is PEM plus openssh-key-v1
-  - public key is SSLEAY format with ssh-ed25519 label
+  - private key is PEM(openssh-key-v1)
+  - public key is openssh-key-v1 format with ssh-ed25519 label
 - rsa
-  - private key is PEM plus ??
-  - public key is SSLEAY format with ssh-rsa label
+  - private key is PEM(ASN.1) or PEM(openssh-key-v1) (with `-o`)
+  - public key is openssh-key-v1 format with ssh-rsa label
 - ecdsa
-  - private key is PEM plus openssh-key-v1
-  - public key is SSLEAY format with ecdsa-sha2-nistp256 label
+  - private key is PEM(ASN.1) or PEM(openssh-key-v1) (with `-o`)
+  - public key is openssh-key-v1 format with ecdsa-sha2-nistp* label
 - dsa
-  - private key is PEM plus ??
-  - public key is SSLEAY format with ssh-dss label
+  - private key is PEM(ASN.1) or PEM(openssh-key-v1) (with `-o`)
+  - public key is openssh-key-v1 format with ssh-dss label
 
 
 ## ed25519 private key file format (no passphrase)
+
+- PEM wrapper with "OPENSSH PRIVATE KEY" tag around a base64 payload
 
 ```
 # ASCII magic "openssh-key-v1" plus null byte
@@ -66,6 +68,8 @@ ae3c5bb013d06f7818416333955271a5
 
 ## ed25519 private key file format with passphrase
 
+- PEM wrapper with "OPENSSH PRIVATE KEY" tag around a base64 payload
+
 
 ```
 #ASCII magic "openssh-key-v1" plus null byte
@@ -103,7 +107,8 @@ c1ee72ae81074b0ce0f7e540e051d569
 ```
 
 ## rsa private key no passphrase (PEM)
-- PEM wrapper (header, base64 payload, footer)
+
+- PEM wrapper (header, base64 payload, footer) with `RSA PRIVATE KEY` tag
 - base64 payload is ASN.1
 
 Sample of ASN.1 dump
@@ -189,6 +194,8 @@ Warning: Input is non-seekable, some functionality has been disabled.
 
 ## rsa private key no passphrase openssh-key-v1
 
+- PEM wrapper (header, base64 payload, footer) with `OPENSSH PRIVATE KEY` tag
+
 ```
 6f70656e7373682d6b65792d763100 openssh-key-v1 and null byte
 00000004 int length = 4
@@ -252,34 +259,40 @@ d5553ad3c23755e2d60fcc51cf379502
 706c79
 6f6e734061766901020304050607
 ```
+
 ## rsa public key
+
+`cat files/ssh-rsa-2048-b-public-key | cut -d " " -f 2 | base64 -D | xxd -p`
+
 ```
-cat files/ssh-06-rsa-public-key.pem | cut -d " " -f 2 | base64 -D | xxd -p
 00000007 int length = 7
 7373682d727361 string = "ssh-rsa"
 00000003 int length = 3
 010001 int public exponent = 65537
 00000101 int length = 257 (1 null byte then 256)
-00b05b1f8c8696a3bf79ef56cfef83af
-b7a8de4a43e0c2f1fce7a6b1f0fec2aa
-07880c46cdf1 44278dbde60f597aed4
-f97f50abeb85addd1eedf576cb21277b
-838bec27d39ee581b75acc8cdf3fcb1a
-a9decb20810c5850cd33d251eb7718d3
-eaa716da9293636227895446c31c486a
-5bf4b0ae84c6fae6b9e209962e703750
-bc4b8008acb65bfb52d4f4bc990ed97a
-ff39e77d34d3da612b9945e60ea0b991
-44bba6c44a4ffb416b4c64b8065be443
-2588cf45aaeab23ffd78db34c522b51a
-dca7653a4ee4ed47b7fd163565263831
-709b82779206c4d9481e3b5c24de34fc
-ab5d17d6450a85341a73347868f619bc
-36a5b6ac38fd6b1e1c45839ea3df3fbe
-475
+00bef1e1ad8a4b855ea2
+d770612afda8694fc5c7951d0e552453
+4430cf04caf5fc59d8d98c2b3f5a9e96
+bdc9c729b322ee16c1a98d6d3c166f05
+b8aa55a56d9354d3211fa7ec7b6de346
+06048e81d936ef65dc69f7cd388c613d
+33c038cad07f96ccd52b394909579cab
+cae6bf5db9cc4bdc1ed27b026c000393
+4aeb7a073c9b36471b9bdd8e79948db1
+021fb5b4757381d8f8c28fbf8a360cd5
+dec8db1689a9d9a5b68d42a36ef7ff67
+ff818d3658dd6be2abf251ef251fb71b
+2f078b2c07e0190c4873b0b0483b8532
+e1a8bf232180be9e5b51f54e24eca54a
+c28514b120f2cb10b46af37196ea48c6
+ce0942f820374b9af0879ecb385900a2
+bd830748863e65
 ```
+
 ## dsa private key
 
+- PEM wrapper (header, base64 payload, footer) with `DSA PRIVATE KEY` tag
+- ASN.1 payload
 ```
   0 442: SEQUENCE {
   4   1:   INTEGER 0
@@ -315,8 +328,10 @@ ab5d17d6450a85341a73347868f619bc
 424  20:   INTEGER 66 D5 97 A1 4D D5 DB 58 8D 95 FB 6B E9 AA C4 50 92 4C EA C3
        :   }
 ```
+
 ```
-308201ba0201
+308201
+ba0201
 00028181
 00bd040d45222c81633aa1e3bc9f1b339f6c1d95
 ad2c6950a15d37dac86396c4bf85096ec7cb6426344c87b556154b7d90e5
@@ -338,6 +353,7 @@ a3f41aed647c0c5f129bc71afd2867bc1cacbb020f9ffa1a4b48acf57699
 ```
 
 ## dsa public key
+- openssh-key-v1 space-delimited format
 
 ```
 00000007 int length = 7
@@ -381,7 +397,10 @@ bdbff850a75e4b6dc75327d89ea7846d
 5e7639387e1348d12b468b89689c3cbd
 ```
 ## ecdsa private key
-This seems to be a PEM wrapper then ASN.1
+
+- PEM wrapper (header, base64 payload, footer) with `RSA PRIVATE KEY` tag
+- ASN.1 payload
+
 ```
   0 119: SEQUENCE {
   2   1:   INTEGER 1
@@ -412,6 +431,7 @@ bae4763e26fec1a00a06082a8648ce3d
 4555148b435b954e0690da7dcbdf7926
 9a8fb9b0ff49fe40c0
 ```
+
 ## References
 
 - [RFC 4716](https://tools.ietf.org/html/rfc4716) supposedly the ssh public key file format, but my ssh-keygen on macOS 10.13 does not generate this format by default.
@@ -430,6 +450,7 @@ bae4763e26fec1a00a06082a8648ce3d
 - https://tools.ietf.org/html/rfc2045
 
 ## Stream of consciousness notes to organize later
+
 - `brew install asn1c`
   - that gives you the `unber` CLI
 - https://tools.ietf.org/html/rfc4648#section-3.1
