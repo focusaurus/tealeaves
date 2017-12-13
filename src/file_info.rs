@@ -118,6 +118,8 @@ impl fmt::Display for FileInfo {
                     output.push_str("\n");
                 } else if self.is_size_small {
                     output.push_str("\t⚠️ unrecognized small file");
+                } else if self.is_size_medium {
+                    output.push_str("\t⚠️ unrecognized medium file");
                 } else if self.is_size_large {
                     output.push_str("\t⚠️ unrecognized large file");
                 } else if !self.is_readable {
