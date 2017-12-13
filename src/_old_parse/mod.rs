@@ -79,12 +79,6 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<file_info::SshKey> {
     }
 }
 
-// #[test]
-// fn basics() {
-//     let key = public_key(&b"ssh-rsa aaaa hey there\n"[..]).unwrap();
-//     assert_eq!(key.algorithm, &b"ssh-rsa"[..]);
-// }
-
 fn bit_count(field: Vec<u8>) -> usize {
     // exclude leading null byte then convert bytes to bits
     (field.len() - 1) * 8

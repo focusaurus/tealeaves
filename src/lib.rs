@@ -55,19 +55,19 @@ pub fn scan<P: Permissions + PermissionsExt,
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
         if bytes.starts_with(b"ssh-ed25519 ") {
-            file_info.ssh_key = Some(parse::public_key::ed25519(&bytes)?);
+            file_info.ssh_key = Some(parse::public_key(&bytes)?);
         }
         if bytes.starts_with(b"ssh-rsa ") {
-            file_info.ssh_key = Some(parse::public_key::rsa(&bytes)?);
+            file_info.ssh_key = Some(parse::public_key(&bytes)?);
         }
         if bytes.starts_with(b"ssh-dss ") {
-            file_info.ssh_key = Some(parse::public_key::dsa(&bytes)?);
+            file_info.ssh_key = Some(parse::public_key(&bytes)?);
         }
         if bytes.starts_with(b"ecdsa-sha2-nistp") {
-            file_info.ssh_key = Some(parse::public_key::ecdsa(&bytes)?);
+            file_info.ssh_key = Some(parse::public_key(&bytes)?);
         }
         if bytes.starts_with(b"-----BEGIN ") {
-            match parse::private_key::pem(&bytes) {
+            match parse::private_key(&bytes) {
                 Ok(key) => file_info.ssh_key = Some(key),
                 Err(message) => file_info.error = Some(message),
             }
