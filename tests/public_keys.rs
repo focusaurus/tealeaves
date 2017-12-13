@@ -6,7 +6,7 @@ use std::io::Read;
 use tealeaves::parse::public_key;
 
 #[test]
-fn public_ed25519() {
+fn ed25519_public() {
     let mut file = fs::File::open("./files/ssh-ed25519-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
@@ -14,8 +14,7 @@ fn public_ed25519() {
         Ok(ssh_key) => {
             assert_eq!(ssh_key.algorithm, Some("ed25519".to_string()));
             assert_eq!(ssh_key.is_public, true);
-            assert_eq!(ssh_key.comment,
-                       Some("unit test comment".to_string()));
+            assert_eq!(ssh_key.comment, Some("unit test comment".to_string()));
             assert_eq!(ssh_key.key_length, None);
             assert_eq!(ssh_key.is_encrypted, false);
         }
@@ -26,7 +25,7 @@ fn public_ed25519() {
 }
 
 #[test]
-fn public_rsa_1024() {
+fn rsa_1024_public() {
     let mut file = fs::File::open("./files/ssh-rsa-1024-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
@@ -45,7 +44,7 @@ fn public_rsa_1024() {
 }
 
 #[test]
-fn public_rsa_2048() {
+fn rsa_2048_public() {
     let mut file = fs::File::open("./files/ssh-rsa-2048-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
@@ -64,7 +63,7 @@ fn public_rsa_2048() {
 }
 
 #[test]
-fn public_dsa() {
+fn dsa_public() {
     let mut file = fs::File::open("./files/ssh-dsa-1024-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
@@ -83,7 +82,7 @@ fn public_dsa() {
 }
 
 #[test]
-fn public_ecdsa_256() {
+fn ecdsa_256_public() {
     let mut file = fs::File::open("./files/ssh-ecdsa-256-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
@@ -102,7 +101,7 @@ fn public_ecdsa_256() {
 }
 
 #[test]
-fn public_ecdsa_384() {
+fn ecdsa_384_public() {
     let mut file = fs::File::open("./files/ssh-ecdsa-384-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
@@ -121,7 +120,7 @@ fn public_ecdsa_384() {
 }
 
 #[test]
-fn public_ecdsa_521() {
+fn ecdsa_521_public() {
     let mut file = fs::File::open("./files/ssh-ecdsa-521-a-public-key").unwrap();
     let mut key_bytes = vec![];
     file.read_to_end(&mut key_bytes).unwrap();
