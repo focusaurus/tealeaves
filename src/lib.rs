@@ -11,18 +11,19 @@ use rsfs::*;
 use rsfs::unix_ext::*;
 use std::io;
 use std::io::Read;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 #[macro_use]
 extern crate nom;
 
-pub fn scan<P: Permissions + PermissionsExt,
-            M: Metadata<Permissions = P>,
-            F: GenFS<Permissions = P, Metadata = M>>
-    (fs: &F,
-     path: &AsRef<Path>)
-     -> io::Result<FileInfo> {
-
+pub fn scan<
+    P: Permissions + PermissionsExt,
+    M: Metadata<Permissions = P>,
+    F: GenFS<Permissions = P, Metadata = M>,
+>(
+    fs: &F,
+    path: &AsRef<Path>,
+) -> io::Result<FileInfo> {
     let mut file_info = FileInfo::new();
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
@@ -40,17 +41,17 @@ pub fn scan<P: Permissions + PermissionsExt,
     if file_info.is_readable {
         match meta.len() {
             0...50 => {
-                file_info.is_size_small = true;
+                file_info.size = file_info::Size::Small;
             }
             51...4096 => {
-                file_info.is_size_medium = true;
+                file_info.size = file_info::Size::Medium;
             }
             _ => {
-                file_info.is_size_large = true;
+                file_info.size = file_info::Size::Large;
             }
         }
     }
-    if file_info.is_size_medium {
+    if file_info.size == file_info::Size::Medium {
         let mut file = fs.open_file(path)?;
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();

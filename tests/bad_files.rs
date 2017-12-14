@@ -7,6 +7,7 @@ use rsfs::mem::unix::FS;
 use rsfs::mem::unix::Permissions;
 use rsfs::unix_ext::PermissionsExt;
 use std::io::Write;
+use tealeaves::file_info::Size;
 
 fn memfs() -> FS {
     let fs = rsfs::mem::unix::FS::new();
@@ -19,9 +20,7 @@ fn empty_file_gets_error() {
     let fs = memfs();
     let _empty = fs.create_file("/tmp/empty");
     let file_info = tealeaves::scan(&fs, &"/tmp/empty").unwrap();
-    assert!(file_info.is_size_small);
-    assert!(!file_info.is_size_medium);
-    assert!(!file_info.is_size_large);
+    assert_eq!(file_info.size, Size::Small);
 }
 
 #[test]
@@ -56,7 +55,7 @@ fn low_size_gets_error() {
     let mut small = fs.create_file("/tmp/small").unwrap();
     small.write(&[1, 2, 3, 4]).unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
-    assert!(file_info.is_size_small);
+    assert_eq!(file_info.size, Size::Small);
 }
 
 #[test]
@@ -105,9 +104,7 @@ fn high_size_gets_error() {
         big.write(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
     }
     let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
-    assert!(file_info.is_size_large);
-    assert!(!file_info.is_size_small);
-    assert!(!file_info.is_size_medium);
+    assert_eq!(file_info.size, Size::Large);
 }
 
 

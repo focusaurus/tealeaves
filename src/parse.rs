@@ -1,7 +1,7 @@
 extern crate byteorder;
 use base64;
 use byteorder::{BigEndian, ReadBytesExt};
-use file_info::{Algorithm,SshKey};
+use file_info::{Algorithm, SshKey};
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
@@ -35,12 +35,10 @@ fn test_has_prefix() {
 }
 
 fn is_encrypted(headers: &Vec<HeaderEntry>) -> bool {
-    headers
-        .iter()
-        .any(|header| match header {
-                 &HeaderEntry::ProcType(_code, ref kind) => kind == &ProcTypeType::ENCRYPTED,
-                 _ => false,
-             })
+    headers.iter().any(|header| match header {
+        &HeaderEntry::ProcType(_code, ref kind) => kind == &ProcTypeType::ENCRYPTED,
+        _ => false,
+    })
 }
 
 fn bit_count(field: Vec<u8>) -> usize {
@@ -54,9 +52,11 @@ fn bit_count(field: Vec<u8>) -> usize {
 fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
     let len = reader.read_u32::<BigEndian>()?;
     if len > 4096 {
-        return Err(bail("Field size too large. File possibly corrupt.".to_string()));
+        return Err(bail(
+            "Field size too large. File possibly corrupt.".to_string(),
+        ));
     }
-    let mut word = vec![0u8;len as usize];
+    let mut word = vec![0u8; len as usize];
     reader.read_exact(&mut word.as_mut_slice())?;
     Ok(word)
 }
@@ -285,15 +285,12 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
 pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<SshKey> {
     named!(space_sep, is_a_s!(" \t"));
     named!(value, is_not_s!(" \t"));
-    named!(public_key<(&[u8], &[u8], &[u8])>,
-      do_parse!(
-        algorithm: value >>
-        separator: space_sep >>
-        payload: value >>
-        separator: space_sep >>
-        comment: is_not_s!("\r\n") >>
-        (algorithm, payload, comment)
-      )
+    named!(
+        public_key<(&[u8], &[u8], &[u8])>,
+        do_parse!(
+            algorithm: value >> separator: space_sep >> payload: value >> separator: space_sep
+                >> comment: is_not_s!("\r\n") >> (algorithm, payload, comment)
+        )
     );
     match public_key(bytes) {
         IResult::Done(_input, (_label, payload, comment)) => {

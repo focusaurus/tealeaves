@@ -1,6 +1,14 @@
 use std::{fmt, path};
 
 #[derive(PartialEq, Eq, Debug)]
+pub enum Size {
+    Unknown,
+    Small,
+    Medium,
+    Large,
+}
+
+#[derive(PartialEq, Eq, Debug)]
 pub enum Algorithm {
     Unknown,
     Ed25519,
@@ -41,19 +49,21 @@ impl fmt::Display for SshKey {
         }
         output.push_str("ssh key (");
         output.push_str(&match self.algorithm {
-                             Algorithm::Ed25519 => "ed25519".to_string(),
-                             Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
-                             Algorithm::Rsa(_) => "rsa".to_string(),
-                             Algorithm::Dsa(_) => "dsa".to_string(),
-                             Algorithm::Unknown => "unknown".to_string(),
-                         });
-        match self.algorithm {
-            Algorithm::Rsa(ref length)|Algorithm::Dsa(ref length) => {
-                output.push_str(&format!(", {} bits", length));
+            Algorithm::Ed25519 => "ed25519".to_string(),
+            Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
+            Algorithm::Rsa(_) => "rsa".to_string(),
+            Algorithm::Dsa(_) => "dsa".to_string(),
+            Algorithm::Unknown => "unknown".to_string(),
+        });
+        if !self.is_encrypted {
+            match self.algorithm {
+                Algorithm::Rsa(ref length) | Algorithm::Dsa(ref length) => {
+                    output.push_str(&format!(", {} bits", length));
+                }
+                _ => (),
             }
-            _ => (),
         }
-    if !self.is_public {
+        if !self.is_public {
             output.push_str(", ");
             if self.is_encrypted {
                 output.push_str("encrypted");
@@ -73,9 +83,7 @@ pub struct FileInfo {
     pub is_file: bool,
     pub is_pem: bool,
     pub is_readable: bool,
-    pub is_size_large: bool,
-    pub is_size_medium: bool,
-    pub is_size_small: bool,
+    pub size: Size,
     pub mode: Option<u32>,
     pub ssh_key: Option<SshKey>,
     pub path_buf: path::PathBuf,
@@ -90,9 +98,7 @@ impl FileInfo {
             is_file: false,
             is_pem: false,
             is_readable: false,
-            is_size_large: false,
-            is_size_medium: false,
-            is_size_small: false,
+            size: Size::Unknown,
             mode: None,
             path_buf: path::PathBuf::from("/"),
             pem_tag: "".to_string(),
@@ -133,21 +139,28 @@ impl fmt::Display for FileInfo {
                     output.push_str("\t⚠️ unrecognized PEM: ");
                     output.push_str(&self.pem_tag);
                     output.push_str("\n");
-                } else if self.is_size_small {
-                    output.push_str("\t⚠️ unrecognized small file");
-                } else if self.is_size_medium {
-                    output.push_str("\t⚠️ unrecognized medium file");
-                } else if self.is_size_large {
-                    output.push_str("\t⚠️ unrecognized large file");
-                } else if !self.is_readable {
-                    output.push_str("\t🔥 missing read permission");
+                } else {
+                    output.push_str(&format!(
+                        "\t⚠️ unrecognized {} file",
+                        match self.size {
+                            Size::Small => "small",
+                            Size::Medium => "medium",
+                            Size::Large => "large",
+                            _ => "",
+                        }
+                    ));
+                    if !self.is_readable {
+                        output.push_str("\t🔥 missing read permission");
+                    }
                 }
             }
         }
-        write!(out,
-               "{}\n{}\n",
-               self.path_buf.to_str().unwrap_or("/"),
-               output)
+        write!(
+            out,
+            "{}\n{}\n",
+            self.path_buf.to_str().unwrap_or("/"),
+            output
+        )
     }
 }
 
@@ -159,14 +172,16 @@ fn test_file_info_display_encrypted_ed25519() {
     file_info.is_file = true;
     file_info.is_pem = true;
     file_info.is_readable = true;
-    file_info.is_size_medium = true;
+    file_info.size = Size::Medium;
     let mut ssh_key = SshKey::new();
     ssh_key.algorithm = Algorithm::Ed25519;
     ssh_key.is_public = false;
     ssh_key.is_encrypted = true;
     file_info.ssh_key = Some(ssh_key);
-    assert_eq!(format!("{}", file_info),
-               "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n");
+    assert_eq!(
+        format!("{}", file_info),
+        "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n"
+    );
 }
 
 #[test]
@@ -177,17 +192,19 @@ fn test_file_info_display_encrypted_ecdsa() {
     file_info.is_file = true;
     file_info.is_pem = true;
     file_info.is_readable = true;
-    file_info.is_size_medium = true;
+    file_info.size = Size::Medium;
     let mut ssh_key = SshKey::new();
     ssh_key.algorithm = Algorithm::Ecdsa(384);
     ssh_key.is_public = false;
     ssh_key.is_encrypted = false;
     file_info.ssh_key = Some(ssh_key);
-    assert_eq!(format!("{}", file_info),
-               "/unit-test
+    assert_eq!(
+        format!("{}", file_info),
+        "/unit-test
 \t✓ private ssh key (ecdsa, curve p384, not encrypted)
 \t⚠️ ecdsa keys are considered insecure
-");
+"
+    );
 }
 
 #[test]
@@ -197,11 +214,31 @@ fn test_file_info_display_rsa_public() {
     file_info.is_file = true;
     file_info.is_pem = true;
     file_info.is_readable = true;
-    file_info.is_size_medium = true;
+    file_info.size = Size::Medium;
     let mut ssh_key = SshKey::new();
     ssh_key.algorithm = Algorithm::Rsa(2048);
     ssh_key.is_public = true;
     file_info.ssh_key = Some(ssh_key);
-    assert_eq!("/unit-test\n\t✓ public ssh key (rsa, 2048 bits)\n",
-               format!("{}", file_info));
+    assert_eq!(
+        "/unit-test\n\t✓ public ssh key (rsa, 2048 bits)\n",
+        format!("{}", file_info)
+    );
+}
+
+#[test]
+fn test_file_info_display_rsa_private_passphrase() {
+    let mut file_info = FileInfo::new();
+    file_info.path_buf = path::PathBuf::from("/unit-test");
+    file_info.is_file = true;
+    file_info.is_pem = true;
+    file_info.is_readable = true;
+    file_info.size = Size::Medium;
+    let mut ssh_key = SshKey::new();
+    ssh_key.is_encrypted = true;
+    ssh_key.algorithm = Algorithm::Rsa(0);
+    file_info.ssh_key = Some(ssh_key);
+    assert_eq!(
+        "/unit-test\n\t✓ private ssh key (rsa, encrypted)\n",
+        format!("{}", file_info)
+    );
 }
