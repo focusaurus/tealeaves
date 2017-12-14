@@ -77,7 +77,5 @@ pub fn scan<
             }
         }
     }
-    let mut path_buf = PathBuf::new();
-    path_buf.push(path);
     Ok(file_info)
 }
