@@ -10,7 +10,7 @@ fn wrap() -> io::Result<()> {
     for (index, character) in content.chars().enumerate() {
         print!("{}", character);
         if (index + 1) % 32 == 0 {
-            println!("");
+            println!();
         }
     }
     Ok(())

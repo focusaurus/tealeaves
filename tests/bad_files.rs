@@ -27,8 +27,8 @@ fn empty_file_gets_error() {
 fn unreadable_file_gets_error() {
     let fs = memfs();
     let mut unreadable = fs.create_file("/tmp/unreadable").unwrap();
-    unreadable.write(&[1, 2, 3, 4]).unwrap();
-    for &mode in [0o000, 0o002, 0o020, 0o200, 0o222].iter() {
+    unreadable.write_all(&[1, 2, 3, 4]).unwrap();
+    for &mode in &[0o000, 0o002, 0o020, 0o200, 0o222] {
         fs.set_permissions("/tmp/unreadable", Permissions::from_mode(mode))
             .unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/unreadable").unwrap();
@@ -40,8 +40,8 @@ fn unreadable_file_gets_error() {
 fn readable_file_gets_no_error() {
     let fs = memfs();
     let mut readable = fs.create_file("/tmp/readable").unwrap();
-    readable.write(&[1, 2, 3, 4]).unwrap();
-    for &mode in [0o004, 0o004, 0o040, 0o400, 0o444].iter() {
+    readable.write_all(&[1, 2, 3, 4]).unwrap();
+    for &mode in &[0o004, 0o004, 0o040, 0o400, 0o444] {
         fs.set_permissions("/tmp/readable", Permissions::from_mode(mode))
             .unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/readable").unwrap();
@@ -53,7 +53,7 @@ fn readable_file_gets_no_error() {
 fn low_size_gets_error() {
     let fs = memfs();
     let mut small = fs.create_file("/tmp/small").unwrap();
-    small.write(&[1, 2, 3, 4]).unwrap();
+    small.write_all(&[1, 2, 3, 4]).unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
     assert_eq!(file_info.size, Size::Small);
 }
@@ -62,7 +62,7 @@ fn low_size_gets_error() {
 fn prefix_then_bogus_gets_error() {
     let fs = memfs();
     let mut file = fs.create_file("/tmp/prefix_the_bogus").unwrap();
-    file.write(b"ssh-rsa is a cool kind of file").unwrap();
+    file.write_all(b"ssh-rsa is a cool kind of file").unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/prefix_the_bogus").unwrap();
     assert!(file_info.ssh_key.is_none());
 }
@@ -72,7 +72,7 @@ fn not_pem_gets_detected() {
     let fs = memfs();
     let mut not_pem = fs.create_file("/tmp/not_pem").unwrap();
     not_pem
-        .write(b"Hi this is not even a PEM file or anything, but it's long enough to maybe")
+        .write_all(b"Hi this is not even a PEM file or anything, but it's long enough to maybe")
         .unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
     assert!(!file_info.is_pem);
@@ -82,7 +82,7 @@ fn not_pem_gets_detected() {
 fn pem_gets_detected() {
     let fs = memfs();
     let mut pem = fs.create_file("/tmp/pem").unwrap();
-    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----
+    pem.write_all(b"-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
 QyNTUxOQAAACA2WS+xYVACuTmyxQDByFfD5tRfZFnxq03l04+tYPxExgAAAKj+L4az/i+G
 swAAAAtzc2gtZWQyNTUxOQAAACA2WS+xYVACuTmyxQDByFfD5tRfZFnxq03l04+tYPxExg
@@ -101,7 +101,7 @@ fn high_size_gets_error() {
     let fs = memfs();
     let mut big = fs.create_file("/tmp/big").unwrap();
     for _x in 0..1024 {
-        big.write(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
+        big.write_all(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
     }
     let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
     assert_eq!(file_info.size, Size::Large);
@@ -119,11 +119,11 @@ fn pem_long_field_gets_detected() {
     let bogus_length = "00001001";
     let bin = hex::decode([valid_prefix, bogus_length].concat()).unwrap();
     let base64 = base64::encode(&bin);
-    pem.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\n")
+    pem.write_all(b"-----BEGIN OPENSSH PRIVATE KEY-----\n")
         .unwrap();
-    pem.write(base64.as_bytes()).unwrap();
-    pem.write(b"\n").unwrap();
-    pem.write(b"-----END OPENSSH PRIVATE KEY-----\n")
+    pem.write_all(base64.as_bytes()).unwrap();
+    pem.write_all(b"\n").unwrap();
+    pem.write_all(b"-----END OPENSSH PRIVATE KEY-----\n")
         .unwrap();
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_ok());
@@ -144,14 +144,14 @@ fn asn1_error_gets_detected() {
     let tags = ["RSA", "DSA", "EC"];
     for tag in &tags {
         let payload = base64::encode(&payload);
-        pem.write(b"-----BEGIN ").unwrap();
-        pem.write(tag.as_bytes()).unwrap();
-        pem.write(b" PRIVATE KEY-----\n").unwrap();
-        pem.write(payload.as_bytes()).unwrap();
-        pem.write(b"\n").unwrap();
-        pem.write(b"-----END ").unwrap();
-        pem.write(tag.as_bytes()).unwrap();
-        pem.write(b" PRIVATE KEY-----\n").unwrap();
+        pem.write_all(b"-----BEGIN ").unwrap();
+        pem.write_all(tag.as_bytes()).unwrap();
+        pem.write_all(b" PRIVATE KEY-----\n").unwrap();
+        pem.write_all(payload.as_bytes()).unwrap();
+        pem.write_all(b"\n").unwrap();
+        pem.write_all(b"-----END ").unwrap();
+        pem.write_all(tag.as_bytes()).unwrap();
+        pem.write_all(b" PRIVATE KEY-----\n").unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
         assert!(file_info.error.is_some());
     }

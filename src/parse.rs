@@ -198,7 +198,7 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
 }
 
 pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
-    match nom_pem::decode_block(&bytes) {
+    match nom_pem::decode_block(bytes) {
         Ok(block) => {
             let mut ssh_key = SshKey::new();
             ssh_key.is_encrypted = is_encrypted(&block.headers);
@@ -274,7 +274,7 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
     }
 }
 
-pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<SshKey> {
+pub fn public_key(bytes: &[u8]) -> io::Result<SshKey> {
     named!(space_sep, is_a_s!(" \t"));
     named!(value, is_not_s!(" \t"));
     named!(
@@ -288,7 +288,7 @@ pub fn public_key<'a>(bytes: &'a [u8]) -> io::Result<SshKey> {
         IResult::Done(_input, (_label, payload, comment)) => {
             let mut ssh_key = SshKey::new();
             ssh_key.is_public = true;
-            ssh_key.comment = Some(String::from_utf8_lossy(&comment).into_owned());
+            ssh_key.comment = Some(String::from_utf8_lossy(comment).into_owned());
             let result = base64::decode(payload);
             if let Ok(decoded) = result {
                 algo_and_length(&mut ssh_key, &decoded);
