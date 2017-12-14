@@ -14,26 +14,6 @@ fn bail(message: String) -> io::Error {
     io::Error::new(ErrorKind::Other, message)
 }
 
-fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
-    if data.len() < prefix.len() {
-        return false;
-    }
-    prefix == &data[0..prefix.len()]
-}
-
-#[test]
-fn test_has_prefix() {
-    assert!(has_prefix(b"", b""));
-    assert!(has_prefix(b"", b" abc "));
-    assert!(has_prefix(b"a", b"a"));
-    assert!(has_prefix(b"a", b"ab"));
-
-    // negative tests
-    assert!(!has_prefix(b"ab", b"ba"));
-    assert!(!has_prefix(b"cat", b"dog"));
-    assert!(!has_prefix(b"cat", b"dogcat"));
-}
-
 fn is_encrypted(headers: &[HeaderEntry]) -> bool {
     headers.iter().any(|header| match *header {
         HeaderEntry::ProcType(_code, ref kind) => kind == &ProcTypeType::ENCRYPTED,
@@ -223,7 +203,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                     ssh_key.algorithm = Algorithm::Ecdsa(get_ecdsa_length(&block.data)?);
                 }
                 "OPENSSH PRIVATE KEY" => {
-                    if has_prefix(b"openssh-key-v1", &block.data) {
+                    if block.data.starts_with(b"openssh-key-v1") {
                         match identify_openssh_v1(&block.data) {
                             Ok(key) => {
                                 ssh_key = key;
