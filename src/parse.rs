@@ -3,7 +3,7 @@ use base64;
 use byteorder::{BigEndian, ReadBytesExt};
 use file_info::{Algorithm,SshKey};
 use nom_pem;
-use nom_pem::headers::{HeaderEntry, ProcTypeType};
+use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
 use std::error::Error;
 use std::io;

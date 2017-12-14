@@ -110,7 +110,8 @@ dependencies = [
 
 [[package]]
 name = "nom_pem"
-version = "1.0.0"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "nom 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -274,7 +275,7 @@ dependencies = [
  "clap 2.27.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom_pem 1.0.0",
+ "nom_pem 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rsfs 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "yasna 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -342,6 +343,7 @@ dependencies = [
 "checksum libc 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "5ba3df4dcb460b9dfbd070d41c94c19209620c191b0340b929ce748a2bcd42d2"
 "checksum memchr 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "148fab2e51b4f1cfc66da2a7c32981d1d3c083a803978268bb11fe4b86925e7a"
 "checksum nom 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "05aec50c70fd288702bcd93284a8444607f3292dbdf2a30de5ea5dcdbe72287b"
+"checksum nom_pem 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "01139615afd66af48c5367f6cf87c2b51d626c01a6d006bb3b462361693bb051"
 "checksum num 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)" = "cc4083e14b542ea3eb9b5f33ff48bd373a92d78687e74f4cc0a30caeb754f0ca"
 "checksum num-bigint 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)" = "bdc1494b5912f088f260b775799468d9b9209ac60885d8186a547a0476289e23"
 "checksum num-complex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)" = "58de7b4bf7cf5dbecb635a5797d489864eadd03b107930cbccf9e0fd7428b47c"

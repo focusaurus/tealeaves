@@ -43,24 +43,21 @@ impl fmt::Display for SshKey {
         output.push_str(&match self.algorithm {
                              Algorithm::Ed25519 => "ed25519".to_string(),
                              Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
-                             Algorithm::Rsa(ref length) => "rsa".to_string(),
-                             Algorithm::Dsa(ref length) => "dsa".to_string(),
+                             Algorithm::Rsa(_) => "rsa".to_string(),
+                             Algorithm::Dsa(_) => "dsa".to_string(),
                              Algorithm::Unknown => "unknown".to_string(),
                          });
-        if !self.is_public {
+        match self.algorithm {
+            Algorithm::Rsa(ref length)|Algorithm::Dsa(ref length) => {
+                output.push_str(&format!(", {} bits", length));
+            }
+            _ => (),
+        }
+    if !self.is_public {
             output.push_str(", ");
             if self.is_encrypted {
                 output.push_str("encrypted");
             } else {
-                match self.algorithm {
-                    Algorithm::Rsa(ref length) => {
-                        output.push_str(&format!("{} bits, ", length));
-                    }
-                    Algorithm::Dsa(ref length) => {
-                        output.push_str(&format!("{} bits, ", length));
-                    }
-                    _ => (),
-                }
                 output.push_str("not encrypted");
             }
         }
