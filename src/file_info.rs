@@ -77,9 +77,9 @@ impl fmt::Display for SshKey {
 }
 
 impl Default for SshKey {
- fn default() -> Self {
-     Self::new()
- }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug)]
@@ -179,7 +179,7 @@ fn test_file_info_display_encrypted_ed25519() {
     file_info.is_pem = true;
     file_info.is_readable = true;
     file_info.size = Size::Medium;
-    let mut ssh_key = SshKey::new();
+    let mut ssh_key: SshKey = Default::default();
     ssh_key.algorithm = Algorithm::Ed25519;
     ssh_key.is_public = false;
     ssh_key.is_encrypted = true;
@@ -199,7 +199,7 @@ fn test_file_info_display_encrypted_ecdsa() {
     file_info.is_pem = true;
     file_info.is_readable = true;
     file_info.size = Size::Medium;
-    let mut ssh_key = SshKey::new();
+    let mut ssh_key: SshKey = Default::default();
     ssh_key.algorithm = Algorithm::Ecdsa(384);
     ssh_key.is_public = false;
     ssh_key.is_encrypted = false;
@@ -221,7 +221,7 @@ fn test_file_info_display_rsa_public() {
     file_info.is_pem = true;
     file_info.is_readable = true;
     file_info.size = Size::Medium;
-    let mut ssh_key = SshKey::new();
+    let mut ssh_key: SshKey = Default::default();
     ssh_key.algorithm = Algorithm::Rsa(2048);
     ssh_key.is_public = true;
     file_info.ssh_key = Some(ssh_key);
@@ -239,7 +239,7 @@ fn test_file_info_display_rsa_private_passphrase() {
     file_info.is_pem = true;
     file_info.is_readable = true;
     file_info.size = Size::Medium;
-    let mut ssh_key = SshKey::new();
+    let mut ssh_key: SshKey = Default::default();
     ssh_key.is_encrypted = true;
     ssh_key.algorithm = Algorithm::Rsa(0);
     file_info.ssh_key = Some(ssh_key);

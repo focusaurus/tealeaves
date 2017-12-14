@@ -53,7 +53,7 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
     */
 
     let prefix = b"openssh-key-v1";
-    let mut ssh_key = SshKey::new();
+    let mut ssh_key: SshKey = Default::default();
     // Make a reader for everything after the prefix plus the null byte
     let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
     let cipher_name = read_field(&mut reader)?;
@@ -180,7 +180,7 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
 pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_pem::decode_block(bytes) {
         Ok(block) => {
-            let mut ssh_key = SshKey::new();
+            let mut ssh_key: SshKey = Default::default();
             ssh_key.is_encrypted = is_encrypted(&block.headers);
             ssh_key.algorithm = match block.block_type {
                 "DSA PRIVATE KEY" => Algorithm::Dsa(1024),
@@ -266,7 +266,7 @@ pub fn public_key(bytes: &[u8]) -> io::Result<SshKey> {
     );
     match public_key(bytes) {
         IResult::Done(_input, (_label, payload, comment)) => {
-            let mut ssh_key = SshKey::new();
+            let mut ssh_key: SshKey = Default::default();
             ssh_key.is_public = true;
             ssh_key.comment = Some(String::from_utf8_lossy(comment).into_owned());
             let result = base64::decode(payload);
