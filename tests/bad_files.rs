@@ -142,8 +142,7 @@ fn asn1_error_gets_detected() {
     let fs = memfs();
     let mut pem = fs.create_file("/tmp/pem").unwrap();
     let mut payload = vec![0];
-    payload.extend_from_slice(b"ssh-rsa"); // magic prefix
-    payload.extend_from_slice(&[0]); // null byte
+    payload.extend_from_slice(b"ssh-rsa\0"); // magic prefix
     payload.extend_from_slice(b"this-is-not-asn1");
     let tags = ["RSA", "DSA", "EC"];
     for tag in tags.iter() {

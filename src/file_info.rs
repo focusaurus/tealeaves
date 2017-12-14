@@ -43,8 +43,8 @@ impl fmt::Display for SshKey {
         output.push_str(&match self.algorithm {
                              Algorithm::Ed25519 => "ed25519".to_string(),
                              Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
-                             Algorithm::Rsa(ref length) => format!("rsa, {} bits", length),
-                             Algorithm::Dsa(ref length) => format!("dsa, {} bits", length),
+                             Algorithm::Rsa(ref length) => "rsa".to_string(),
+                             Algorithm::Dsa(ref length) => "dsa".to_string(),
                              Algorithm::Unknown => "unknown".to_string(),
                          });
         if !self.is_public {
@@ -52,6 +52,15 @@ impl fmt::Display for SshKey {
             if self.is_encrypted {
                 output.push_str("encrypted");
             } else {
+                match self.algorithm {
+                    Algorithm::Rsa(ref length) => {
+                        output.push_str(&format!("{} bits, ", length));
+                    }
+                    Algorithm::Dsa(ref length) => {
+                        output.push_str(&format!("{} bits, ", length));
+                    }
+                    _ => (),
+                }
                 output.push_str("not encrypted");
             }
         }
@@ -103,7 +112,7 @@ impl fmt::Display for FileInfo {
                 output.push_str(&format!("\t✓ {}", key));
                 match key.algorithm {
                     Algorithm::Rsa(length) => {
-                        if length < 2048 {
+                        if !key.is_encrypted && length < 2048 {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
