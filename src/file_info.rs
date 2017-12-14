@@ -76,6 +76,12 @@ impl fmt::Display for SshKey {
     }
 }
 
+impl Default for SshKey {
+ fn default() -> Self {
+     Self::new()
+ }
+}
+
 #[derive(Debug)]
 pub struct FileInfo {
     pub pem_tag: String,

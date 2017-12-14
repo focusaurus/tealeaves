@@ -18,7 +18,7 @@ fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
     if data.len() < prefix.len() {
         return false;
     }
-    return prefix == &data[0..prefix.len()];
+    prefix == &data[0..prefix.len()]
 }
 
 #[test]
@@ -34,14 +34,14 @@ fn test_has_prefix() {
     assert!(!has_prefix(b"cat", b"dogcat"));
 }
 
-fn is_encrypted(headers: &Vec<HeaderEntry>) -> bool {
-    headers.iter().any(|header| match header {
-        &HeaderEntry::ProcType(_code, ref kind) => kind == &ProcTypeType::ENCRYPTED,
+fn is_encrypted(headers: &[HeaderEntry]) -> bool {
+    headers.iter().any(|header| match *header {
+        HeaderEntry::ProcType(_code, ref kind) => kind == &ProcTypeType::ENCRYPTED,
         _ => false,
     })
 }
 
-fn bit_count(field: Vec<u8>) -> usize {
+fn bit_count(field: &[u8]) -> usize {
     // exclude leading null byte then convert bytes to bits
     (field.len() - 1) * 8
 }
@@ -93,14 +93,14 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             if !ssh_key.is_encrypted {
                 let _rsa_version = read_field(&mut reader)?;
                 let modulus = read_field(&mut reader)?;
-                ssh_key.algorithm = Algorithm::Rsa(bit_count(modulus));
+                ssh_key.algorithm = Algorithm::Rsa(bit_count(&modulus));
             }
         }
         b"ssh-dss" => {
             ssh_key.algorithm = Algorithm::Dsa(1024);
             if !ssh_key.is_encrypted {
                 let int2 = read_field(&mut reader)?;
-                ssh_key.algorithm = Algorithm::Dsa(bit_count(int2));
+                ssh_key.algorithm = Algorithm::Dsa(bit_count(&int2));
             }
         }
         b"ecdsa-sha2-nistp256" => {
@@ -130,7 +130,7 @@ fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
             for _ in 0..7 {
                 let _int = reader.next().read_bigint()?;
             }
-            return Ok(modulus.bits());
+            Ok(modulus.bits())
         })
     });
     match asn_result {
@@ -152,7 +152,7 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
             for _ in 0..4 {
                 let _int = reader.next().read_bigint()?;
             }
-            return Ok(int2.bits());
+            Ok(int2.bits())
         })
     });
     match asn_result {
@@ -177,7 +177,7 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
                 .next()
                 .read_tagged(yasna::Tag::context(1), |reader| reader.read_bitvec());
 
-            if &oid.components().as_slice() == &[1u64, 2, 840, 10045, 3, 1, 7] {
+            if &oid.components().as_slice() == &[1u64, 2, 840, 10_045, 3, 1, 7] {
                 return Ok(256);
             }
             if &oid.components().as_slice() == &[1u64, 3, 132, 0, 34] {
@@ -187,15 +187,13 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
                 return Ok(521);
             }
 
-            return Ok(0);
+            Ok(0)
         })
     });
     match asn_result {
-        Ok(0) => return Err("Unrecognized ecdsa curve".to_string()),
-        Ok(bits) => return Ok(bits),
-        Err(error) => {
-            return Err(error.description().to_string());
-        }
+        Ok(0) => Err("Unrecognized ecdsa curve".to_string()),
+        Ok(bits) => Ok(bits),
+        Err(error) => Err(error.description().to_string()),
     }
 }
 
@@ -243,9 +241,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             };
             Ok(ssh_key)
         }
-        Err(error) => {
-            return Err(format!("PEM error: {:?}", error));
-        }
+        Err(error) => Err(format!("PEM error: {:?}", error)),
     }
 }
 
@@ -267,12 +263,12 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
         }
         b"ssh-dss" => {
             let int1 = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.algorithm = Algorithm::Dsa(bit_count(int1));
+            ssh_key.algorithm = Algorithm::Dsa(bit_count(&int1));
         }
         b"ssh-rsa" => {
             let _exponent = read_field(&mut reader).unwrap_or(vec![]);
             let modulus = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.algorithm = Algorithm::Rsa(bit_count(modulus));
+            ssh_key.algorithm = Algorithm::Rsa(bit_count(&modulus));
         }
         _ => (),
     }
