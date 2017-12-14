@@ -120,7 +120,7 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
 }
 
 fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
+    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _rsa_version = reader.next().read_i8()?;
             let modulus = reader.next().read_bigint()?;
@@ -143,7 +143,7 @@ fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
 }
 
 fn get_dsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
+    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _int1 = reader.next().read_i8()?;
             let int2 = reader.next().read_bigint()?;
@@ -165,7 +165,7 @@ fn get_dsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
 }
 
 fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let asn_result = yasna::parse_der(&asn1_bytes, |reader| {
+    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let _ = reader.next().read_i8()?;
             let _ = reader.next().read_bytes()?;
@@ -177,13 +177,13 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
                 .next()
                 .read_tagged(yasna::Tag::context(1), |reader| reader.read_bitvec());
 
-            if &oid.components().as_slice() == &[1u64, 2, 840, 10_045, 3, 1, 7] {
+            if oid.components().as_slice() == [1u64, 2, 840, 10_045, 3, 1, 7] {
                 return Ok(256);
             }
-            if &oid.components().as_slice() == &[1u64, 3, 132, 0, 34] {
+            if oid.components().as_slice() == [1u64, 3, 132, 0, 34] {
                 return Ok(384);
             }
-            if &oid.components().as_slice() == &[1u64, 3, 132, 0, 35] {
+            if oid.components().as_slice() == [1u64, 3, 132, 0, 35] {
                 return Ok(521);
             }
 
