@@ -11,7 +11,7 @@ use std::io::{ErrorKind, Read};
 use yasna;
 
 fn bail(message: String) -> io::Error {
-    return io::Error::new(ErrorKind::Other, message);
+    io::Error::new(ErrorKind::Other, message)
 }
 
 fn has_prefix(prefix: &[u8], data: &[u8]) -> bool {
@@ -116,10 +116,6 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             ssh_key.algorithm = Algorithm::Unknown;
         }
     };
-    if ssh_key.is_encrypted {
-        return Ok(ssh_key);
-    }
-
     Ok(ssh_key)
 }
 

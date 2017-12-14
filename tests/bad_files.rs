@@ -142,7 +142,7 @@ fn asn1_error_gets_detected() {
     payload.extend_from_slice(b"ssh-rsa\0"); // magic prefix
     payload.extend_from_slice(b"this-is-not-asn1");
     let tags = ["RSA", "DSA", "EC"];
-    for tag in tags.iter() {
+    for tag in &tags {
         let payload = base64::encode(&payload);
         pem.write(b"-----BEGIN ").unwrap();
         pem.write(tag.as_bytes()).unwrap();
