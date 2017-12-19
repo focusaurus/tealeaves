@@ -32,9 +32,7 @@ fn bit_count(field: &[u8]) -> usize {
 fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
     let len = reader.read_u32::<BigEndian>()?;
     if len > 4096 {
-        return Err(bail(
-            "Field size too large. File possibly corrupt.".into(),
-        ));
+        return Err(bail("Field size too large. File possibly corrupt.".into()));
     }
     let mut word = vec![0u8; len as usize];
     reader.read_exact(&mut word.as_mut_slice())?;
