@@ -33,7 +33,7 @@ fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
     let len = reader.read_u32::<BigEndian>()?;
     if len > 4096 {
         return Err(bail(
-            "Field size too large. File possibly corrupt.".to_string(),
+            "Field size too large. File possibly corrupt.".into(),
         ));
     }
     let mut word = vec![0u8; len as usize];
@@ -171,7 +171,7 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
         })
     });
     match asn_result {
-        Ok(0) => Err("Unrecognized ecdsa curve".to_string()),
+        Ok(0) => Err("Unrecognized ecdsa curve".into()),
         Ok(bits) => Ok(bits),
         Err(error) => Err(error.description().to_string()),
     }

@@ -49,11 +49,11 @@ impl fmt::Display for SshKey {
         }
         output.push_str("ssh key (");
         output.push_str(&match self.algorithm {
-            Algorithm::Ed25519 => "ed25519".to_string(),
+            Algorithm::Ed25519 => "ed25519".into(),
             Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
-            Algorithm::Rsa(_) => "rsa".to_string(),
-            Algorithm::Dsa(_) => "dsa".to_string(),
-            Algorithm::Unknown => "unknown".to_string(),
+            Algorithm::Rsa(_) => "rsa".into(),
+            Algorithm::Dsa(_) => "dsa".into(),
+            Algorithm::Unknown => "unknown".into(),
         });
         if !self.is_encrypted {
             match self.algorithm {
@@ -107,7 +107,7 @@ impl FileInfo {
             size: Size::Unknown,
             mode: None,
             path_buf: path::PathBuf::from("/"),
-            pem_tag: "".to_string(),
+            pem_tag: "".into(),
             ssh_key: None,
         }
     }
@@ -174,7 +174,7 @@ impl fmt::Display for FileInfo {
 fn test_file_info_display_encrypted_ed25519() {
     let mut file_info = FileInfo::new();
     file_info.path_buf = path::PathBuf::from("/unit-test");
-    file_info.pem_tag = "OPENSSH PRIVATE KEY".to_string();
+    file_info.pem_tag = "OPENSSH PRIVATE KEY".into();
     file_info.is_file = true;
     file_info.is_pem = true;
     file_info.is_readable = true;
@@ -194,7 +194,7 @@ fn test_file_info_display_encrypted_ed25519() {
 fn test_file_info_display_encrypted_ecdsa() {
     let mut file_info = FileInfo::new();
     file_info.path_buf = path::PathBuf::from("/unit-test");
-    file_info.pem_tag = "EC PRIVATE KEY".to_string();
+    file_info.pem_tag = "EC PRIVATE KEY".into();
     file_info.is_file = true;
     file_info.is_pem = true;
     file_info.is_readable = true;
