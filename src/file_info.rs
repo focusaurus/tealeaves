@@ -17,6 +17,18 @@ pub enum Algorithm {
     Dsa(usize),
 }
 
+impl fmt::Display for Algorithm {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Algorithm::Ed25519 => write!(out, "ed25519"),
+            &Algorithm::Rsa(_) => write!(out, "rsa"),
+            &Algorithm::Ecdsa(curve) => write!(out, "ecdsa, curve p{}", curve),
+            &Algorithm::Dsa(_) => write!(out, "dsa"),
+            _ => write!(out, "unknown"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct SshKey {
     // pub algorithm: Option<String>,
@@ -48,13 +60,7 @@ impl fmt::Display for SshKey {
             output.push_str("private ");
         }
         output.push_str("ssh key (");
-        output.push_str(&match self.algorithm {
-            Algorithm::Ed25519 => "ed25519".into(),
-            Algorithm::Ecdsa(ref curve) => format!("ecdsa, curve p{}", curve),
-            Algorithm::Rsa(_) => "rsa".into(),
-            Algorithm::Dsa(_) => "dsa".into(),
-            Algorithm::Unknown => "unknown".into(),
-        });
+        output.push_str(&format!("{}", self.algorithm));
         if !self.is_encrypted {
             match self.algorithm {
                 Algorithm::Rsa(ref length) | Algorithm::Dsa(ref length) => {
