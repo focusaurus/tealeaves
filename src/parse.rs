@@ -1,7 +1,7 @@
 extern crate byteorder;
 use base64;
 use byteorder::{BigEndian, ReadBytesExt};
-use file_info::{Algorithm, SshKey};
+use file_info::{Algorithm, CertificateRequest, SshKey};
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
@@ -191,6 +191,9 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                 return Ok(ssh_key);
             }
             match block.block_type {
+                "CERTIFICATE REQUEST" => {
+                    ssh_key.algorithm = Algorithm::Dsa(get_dsa_length(&block.data)?);
+                }
                 "DSA PRIVATE KEY" => {
                     ssh_key.algorithm = Algorithm::Dsa(get_dsa_length(&block.data)?);
                 }
@@ -277,5 +280,20 @@ pub fn public_key(bytes: &[u8]) -> io::Result<SshKey> {
         IResult::Incomplete(_needed) => {
             Err(io::Error::new(io::ErrorKind::Other, "Didn't fully parse"))
         }
+    }
+}
+
+pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
+    match nom_pem::decode_block(bytes) {
+        Ok(block) => {
+            let mut certificate_request: CertificateRequest = Default::default();
+            certificate_request.is_encrypted = is_encrypted(&block.headers);
+            if certificate_request.is_encrypted {
+                // Can't determine details without passphrase
+                return Ok(certificate_request);
+            }
+            Ok(certificate_request)
+        }
+        Err(error) => Err(format!("PEM error: {:?}", error)),
     }
 }

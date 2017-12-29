@@ -448,6 +448,8 @@ bae4763e26fec1a00a06082a8648ce3d
 - https://tools.ietf.org/html/rfc1422
 - https://tools.ietf.org/html/rfc1423
 - https://tools.ietf.org/html/rfc2045
+- https://fly.io/articles/how-rsa-works-tls-foundations/
+- https://www.royalfork.org/2014/09/04/ecc/
 
 ## Stream of consciousness notes to organize later
 

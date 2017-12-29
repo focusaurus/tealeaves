@@ -67,6 +67,15 @@ pub fn scan<
         if bytes.starts_with(b"ecdsa-sha2-nistp") {
             file_info.ssh_key = Some(parse::public_key(&bytes)?);
         }
+        if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
+            match parse::certificate_request(&bytes) {
+                Ok(req) => file_info.certificate_request = Some(req),
+                Err(message) => file_info.error = Some(message),
+            }
+            if file_info.certificate_request.is_some() {
+                file_info.is_pem = true;
+            }
+        }
         if bytes.starts_with(b"-----BEGIN ") {
             match parse::private_key(&bytes) {
                 Ok(key) => file_info.ssh_key = Some(key),

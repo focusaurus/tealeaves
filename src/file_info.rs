@@ -30,6 +30,25 @@ impl fmt::Display for Algorithm {
 }
 
 #[derive(Debug)]
+pub struct CertificateRequest {
+    pub is_encrypted: bool,
+}
+
+impl CertificateRequest {
+    pub fn new() -> Self {
+        Self {
+            is_encrypted: false,
+        }
+    }
+}
+
+impl Default for CertificateRequest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug)]
 pub struct SshKey {
     // pub algorithm: Option<String>,
     pub algorithm: Algorithm,
@@ -98,6 +117,7 @@ pub struct FileInfo {
     pub size: Size,
     pub mode: Option<u32>,
     pub ssh_key: Option<SshKey>,
+    pub certificate_request: Option<CertificateRequest>,
     pub path_buf: path::PathBuf,
     pub error: Option<String>,
 }
@@ -114,6 +134,7 @@ impl FileInfo {
             mode: None,
             path_buf: path::PathBuf::from("/"),
             pem_tag: "".into(),
+            certificate_request: None,
             ssh_key: None,
         }
     }
@@ -143,27 +164,31 @@ impl fmt::Display for FileInfo {
                     output.push_str("\n\t⚠️ insecure permissions");
                 }
             }
-
-            None => {
-                if self.is_directory {
-                    output.push_str("\t✓ is a directory");
-                } else if self.is_pem {
-                    output.push_str("\t⚠️ unrecognized PEM: ");
-                    output.push_str(&self.pem_tag);
-                    output.push_str("\n");
-                } else {
-                    output.push_str(&format!(
-                        "\t⚠️ unrecognized {} file",
-                        match self.size {
-                            Size::Small => "small",
-                            Size::Medium => "medium",
-                            Size::Large => "large",
-                            _ => "",
-                        }
-                    ));
-                    if !self.is_readable {
-                        output.push_str("\t🔥 missing read permission");
+            None => (),
+        }
+        match self.certificate_request {
+            Some(_) => output.push_str("\t✓ certificate signing request"),
+            _ => (),
+        }
+        if self.ssh_key.is_none() && self.certificate_request.is_none() {
+            if self.is_directory {
+                output.push_str("\t✓ is a directory");
+            } else if self.is_pem {
+                output.push_str("\t⚠️ unrecognized PEM: ");
+                output.push_str(&self.pem_tag);
+                output.push_str("\n");
+            } else {
+                output.push_str(&format!(
+                    "\t⚠️ unrecognized {} file",
+                    match self.size {
+                        Size::Small => "small",
+                        Size::Medium => "medium",
+                        Size::Large => "large",
+                        _ => "",
                     }
+                ));
+                if !self.is_readable {
+                    output.push_str("\t🔥 missing read permission");
                 }
             }
         }
