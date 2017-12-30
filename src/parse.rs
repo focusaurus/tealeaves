@@ -9,6 +9,7 @@ use std::error::Error;
 use std::io;
 use std::io::{ErrorKind, Read};
 use yasna;
+use yasna::tags::{TAG_INTEGER,TAG_OBJECT};
 
 fn bail(message: String) -> io::Error {
     io::Error::new(ErrorKind::Other, message)
@@ -283,6 +284,29 @@ pub fn public_key(bytes: &[u8]) -> io::Result<SshKey> {
     }
 }
 
+fn parse_certificate_request(asn1_bytes: &[u8]) {
+    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
+        reader.read_sequence(|reader| {
+            let wtf = reader.next().read_i8()?;
+            reader.read_sequence(|reader|{
+                let object_type  = reader.next().read_oid().unwrap();
+                let country = reader.next().read_blah().unwrap();
+
+            })
+            // let oid = reader
+            //     .next()
+            //     .read_tagged(yasna::Tag::context(0), |reader| reader.read_i8())
+            //     .unwrap();
+        })
+    });
+    match asn_result {
+        Ok(bits) => Ok(bits),
+        Err(error) => {
+            // println!("ERROR {:?}", error);
+            Err(error.description().to_string())
+        }
+    };
+}
 pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
     match nom_pem::decode_block(bytes) {
         Ok(block) => {
@@ -292,6 +316,7 @@ pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
                 // Can't determine details without passphrase
                 return Ok(certificate_request);
             }
+            parse_certificate_request(&block.data)?;
             Ok(certificate_request)
         }
         Err(error) => Err(format!("PEM error: {:?}", error)),
