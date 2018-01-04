@@ -7,9 +7,10 @@ authors = ["Peter Lyons <pete@peterlyons.com>"]
 base64 = "0.6.0"
 byteorder = "1.1.0"
 clap = "2.27.1"
+der-parser = "0.4.4"
 hex = "0.3.1"
 nom = "3.2.1"
-nom_pem = "1.0.3"
-# nom_pem = { path = "../nom_pem" }
+nom_pem = { path = "../nom_pem" }
+# nom_pem = "1.0.4"
 rsfs = "0.4.1"
 yasna = "0.1.3"

@@ -4,7 +4,6 @@ use std::io::Read;
 use tealeaves::parse::private_key;
 use tealeaves::file_info::Algorithm;
 
-
 #[test]
 fn rsa_1024_private_passphrase() {
     let mut file = fs::File::open("./files/ssh-rsa-2048-b-private-key-passphrase.pem").unwrap();
@@ -22,7 +21,6 @@ fn rsa_1024_private_passphrase() {
         }
     }
 }
-
 
 #[test]
 fn dsa_1024_private_clear() {

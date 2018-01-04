@@ -9,7 +9,6 @@ use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
-use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -23,12 +22,20 @@ pub fn scan<
 >(
     fs: &F,
     path: &AsRef<Path>,
-) -> io::Result<FileInfo> {
+) -> Result<FileInfo, String> {
     let mut file_info = FileInfo::new();
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
     file_info.path_buf = path_buf;
-    let meta = fs.metadata(path)?;
+    let res = fs.metadata(path);
+    if res.is_err() {
+        return Err(format!(
+            "Error reading {}: {}",
+            path.as_ref().display(),
+            res.err().unwrap()
+        ));
+    }
+    let meta = res.unwrap();
     file_info.is_directory = meta.is_dir();
     file_info.is_file = meta.is_file();
 
@@ -52,7 +59,15 @@ pub fn scan<
         }
     }
     if file_info.size == file_info::Size::Medium {
-        let mut file = fs.open_file(path)?;
+        let open_result = fs.open_file(path);
+        if open_result.is_err() {
+            return Err(format!(
+                "Error opening {}: {}",
+                path.as_ref().display(),
+                open_result.err().unwrap()
+            ));
+        }
+        let mut file = open_result.unwrap();
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
         if bytes.starts_with(b"ssh-ed25519 ") {

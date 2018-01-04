@@ -1,4 +1,5 @@
 extern crate byteorder;
+extern crate der_parser;
 use base64;
 use byteorder::{BigEndian, ReadBytesExt};
 use file_info::{Algorithm, CertificateRequest, SshKey};
@@ -9,7 +10,6 @@ use std::error::Error;
 use std::io;
 use std::io::{ErrorKind, Read};
 use yasna;
-use yasna::tags::{TAG_INTEGER,TAG_OBJECT};
 
 fn bail(message: String) -> io::Error {
     io::Error::new(ErrorKind::Other, message)
@@ -99,24 +99,23 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
 }
 
 fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
-        reader.read_sequence(|reader| {
-            let _rsa_version = reader.next().read_i8()?;
-            let modulus = reader.next().read_bigint()?;
-            // We don't need anything else but yasna panics if we leave unparsed data at the
-            // end of the file so just read them all in. For the record they are
-            // _pub_exp, _priv_exp, _prime1, _prime2, _exp1, _exp2, _coefficient
-            for _ in 0..7 {
-                let _int = reader.next().read_bigint()?;
-            }
-            Ok(modulus.bits())
-        })
-    });
-    match asn_result {
-        Ok(bits) => Ok(bits),
-        Err(error) => {
-            // println!("ERROR {:?}", error);
-            Err(error.description().to_string())
+    let der_result = der_parser::parse_der(&asn1_bytes);
+    match der_result {
+        IResult::Done(_input, der) => {
+            let seq = der.as_sequence().unwrap();
+            let _rsa_version = seq[0].as_u32().unwrap();
+            let modulus = seq[1].content.as_slice().unwrap();
+            // Length in bits, discount null byte at start then multiply byte count by 8
+            Ok((modulus.len() - 1) * 8)
+        }
+        IResult::Error(error) => {
+            eprintln!("{}", error);
+            Err("Error parsing RSA".to_string())
+        }
+        IResult::Incomplete(_needed) => {
+            eprintln!("{:?}", _needed);
+            Err("Error incomplete RSA".to_string())
+            // Err(der_parser::DerError::DerValueError)
         }
     }
 }
@@ -256,17 +255,17 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
     }
 }
 
-pub fn public_key(bytes: &[u8]) -> io::Result<SshKey> {
+pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
     named!(space_sep, is_a_s!(" \t"));
     named!(value, is_not_s!(" \t"));
     named!(
-        public_key<(&[u8], &[u8], &[u8])>,
+        nom_public_key<(&[u8], &[u8], &[u8])>,
         do_parse!(
             algorithm: value >> separator: space_sep >> payload: value >> separator: space_sep
                 >> comment: is_not_s!("\r\n") >> (algorithm, payload, comment)
         )
     );
-    match public_key(bytes) {
+    match nom_public_key(bytes) {
         IResult::Done(_input, (_label, payload, comment)) => {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_public = true;
@@ -277,15 +276,51 @@ pub fn public_key(bytes: &[u8]) -> io::Result<SshKey> {
             }
             Ok(ssh_key)
         }
-        IResult::Error(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
-        IResult::Incomplete(_needed) => {
-            Err(io::Error::new(io::ErrorKind::Other, "Didn't fully parse"))
-        }
+        IResult::Error(error) => Err("Parse error".into()),
+        IResult::Incomplete(_needed) => Err("Didn't fully parse".to_string()),
     }
 }
 
 fn parse_certificate_request(asn1_bytes: &[u8]) {
-    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
+    let der_result = der_parser::parse_der(&asn1_bytes);
+    match der_result {
+        IResult::Done(_input, der) => {
+            assert_eq!(_input.len(), 0);
+            let seq0 = der.as_sequence().unwrap();
+            let seq1 = seq0[0].as_sequence().unwrap();
+            let version = &seq1[0].content.as_u32().unwrap();
+            println!("version {:?}", version);
+            let seq2 = &seq1[1].content.as_sequence().unwrap();
+
+            for i in 0..6 {
+                let seq4 = &seq2[i].as_set().unwrap()[0].as_sequence().unwrap();
+                let oid = &seq4[0].as_oid().unwrap();
+                println!("oid {:?}", oid);
+                let value = &seq4[1].as_slice().unwrap();
+                println!("value {}", String::from_utf8_lossy(value));
+            }
+            // let seq4 = &seq2[1].as_set().unwrap()[0].as_sequence().unwrap();
+            // let oid = &seq4[0].as_oid().unwrap();
+            // println!("oid {:?}", oid);
+            // let state = &seq4[1].as_slice().unwrap();
+            // println!("state {}", String::from_utf8_lossy(state));
+            // // let country = &seq3[1]
+            // if seq1.len() < 1 {
+            //     //return Err(der_parser::DerError::DerValueError);
+            //     return;
+            // }
+        }
+        IResult::Error(error) => {
+            eprintln!("{}", error);
+            // Err(der_parser::DerError::DerValueError)
+            // Err(io::Error::new(io::ErrorKind::Other, error))
+        }
+        IResult::Incomplete(_needed) => {
+            eprintln!("{:?}", _needed);
+            // Err(der_parser::DerError::DerValueError)
+        }
+    };
+    /*    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
         reader.read_sequence(|reader| {
             let wtf = reader.next().read_i8()?;
             reader.read_sequence(|reader|{
@@ -306,6 +341,7 @@ fn parse_certificate_request(asn1_bytes: &[u8]) {
             Err(error.description().to_string())
         }
     };
+*/
 }
 pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
     match nom_pem::decode_block(bytes) {
@@ -316,7 +352,7 @@ pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
                 // Can't determine details without passphrase
                 return Ok(certificate_request);
             }
-            parse_certificate_request(&block.data)?;
+            parse_certificate_request(&block.data);
             Ok(certificate_request)
         }
         Err(error) => Err(format!("PEM error: {:?}", error)),

@@ -82,7 +82,8 @@ fn not_pem_gets_detected() {
 fn pem_gets_detected() {
     let fs = memfs();
     let mut pem = fs.create_file("/tmp/pem").unwrap();
-    pem.write_all(b"-----BEGIN OPENSSH PRIVATE KEY-----
+    pem.write_all(
+        b"-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
 QyNTUxOQAAACA2WS+xYVACuTmyxQDByFfD5tRfZFnxq03l04+tYPxExgAAAKj+L4az/i+G
 swAAAAtzc2gtZWQyNTUxOQAAACA2WS+xYVACuTmyxQDByFfD5tRfZFnxq03l04+tYPxExg
@@ -90,8 +91,8 @@ AAAEBIhgNOlzPnH3cAul5S0VSrnirdVr6TVDL2gVDXIEu6FTZZL7FhUAK5ObLFAMHIV8Pm
 1F9kWfGrTeXTj61g/ETGAAAAH1RlYWxldmVzIHRlc3QgRUQyNTUxOSBTU0ggS2V5IDEBAg
 MEBQY=
 -----END OPENSSH PRIVATE KEY-----
-")
-        .unwrap();
+",
+    ).unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
     assert!(file_info.is_pem);
 }
@@ -106,7 +107,6 @@ fn high_size_gets_error() {
     let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
     assert_eq!(file_info.size, Size::Large);
 }
-
 
 #[test]
 fn pem_long_field_gets_detected() {
@@ -127,11 +127,13 @@ fn pem_long_field_gets_detected() {
         .unwrap();
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_ok());
-    assert!(result
-                .unwrap()
-                .error
-                .unwrap()
-                .contains("Field size too large"));
+    assert!(
+        result
+            .unwrap()
+            .error
+            .unwrap()
+            .contains("Field size too large")
+    );
 }
 
 #[test]
