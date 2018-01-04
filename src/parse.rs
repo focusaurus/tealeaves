@@ -98,46 +98,21 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
     Ok(ssh_key)
 }
 
-fn get_rsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
+fn length_seq1(asn1_bytes: &[u8]) -> Result<usize, String> {
     let der_result = der_parser::parse_der(&asn1_bytes);
     match der_result {
         IResult::Done(_input, der) => {
             let seq = der.as_sequence().unwrap();
-            let _rsa_version = seq[0].as_u32().unwrap();
-            let modulus = seq[1].content.as_slice().unwrap();
+            let _version = seq[0].as_u32().unwrap();
+            let field = seq[1].content.as_slice().unwrap();
             // Length in bits, discount null byte at start then multiply byte count by 8
-            Ok((modulus.len() - 1) * 8)
+            Ok((field.len() - 1) * 8)
         }
         IResult::Error(error) => {
-            eprintln!("{}", error);
-            Err("Error parsing RSA".to_string())
+            Err(format!("Error parsing key file: {}", error))
         }
         IResult::Incomplete(_needed) => {
-            eprintln!("{:?}", _needed);
-            Err("Error incomplete RSA".to_string())
-            // Err(der_parser::DerError::DerValueError)
-        }
-    }
-}
-
-fn get_dsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
-        reader.read_sequence(|reader| {
-            let _int1 = reader.next().read_i8()?;
-            let int2 = reader.next().read_bigint()?;
-            // We don't need anything else but yasna panics if we leave unparsed data at the
-            // end of the file so just read them all in
-            for _ in 0..4 {
-                let _int = reader.next().read_bigint()?;
-            }
-            Ok(int2.bits())
-        })
-    });
-    match asn_result {
-        Ok(bits) => Ok(bits),
-        Err(error) => {
-            // println!("ERROR {:?}", error);
-            Err(error.description().to_string())
+            Err("Error parsing: incomplete".into())
         }
     }
 }
@@ -171,7 +146,7 @@ fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
     match asn_result {
         Ok(0) => Err("Unrecognized ecdsa curve".into()),
         Ok(bits) => Ok(bits),
-        Err(error) => Err(error.description().to_string()),
+        Err(error) => Err(error.description().into()),
     }
 }
 
@@ -192,13 +167,14 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             }
             match block.block_type {
                 "CERTIFICATE REQUEST" => {
-                    ssh_key.algorithm = Algorithm::Dsa(get_dsa_length(&block.data)?);
+                    // TODO handle CSR
+                    ssh_key.algorithm = Algorithm::Dsa(length_seq1(&block.data)?);
                 }
                 "DSA PRIVATE KEY" => {
-                    ssh_key.algorithm = Algorithm::Dsa(get_dsa_length(&block.data)?);
+                    ssh_key.algorithm = Algorithm::Dsa(length_seq1(&block.data)?);
                 }
                 "RSA PRIVATE KEY" => {
-                    ssh_key.algorithm = Algorithm::Rsa(get_rsa_length(&block.data)?);
+                    ssh_key.algorithm = Algorithm::Rsa(length_seq1(&block.data)?);
                 }
                 "EC PRIVATE KEY" => {
                     ssh_key.algorithm = Algorithm::Ecdsa(get_ecdsa_length(&block.data)?);
@@ -276,8 +252,8 @@ pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
             }
             Ok(ssh_key)
         }
-        IResult::Error(error) => Err("Parse error".into()),
-        IResult::Incomplete(_needed) => Err("Didn't fully parse".to_string()),
+        IResult::Error(_error) => Err("Parse error".into()),
+        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
     }
 }
 
