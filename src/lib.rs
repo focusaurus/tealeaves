@@ -15,6 +15,12 @@ use std::path::{Path, PathBuf};
 #[macro_use]
 extern crate nom;
 
+#[macro_use(parse_der_sequence_defined, parse_der_defined, fold_parsers)]
+extern crate der_parser;
+
+#[macro_use(error_if)]
+extern crate rusticata_macros;
+
 pub fn scan<
     P: Permissions + PermissionsExt,
     M: Metadata<Permissions = P>,

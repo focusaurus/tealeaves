@@ -14,3 +14,4 @@ nom_pem = { path = "../nom_pem" }
 # nom_pem = "1.0.4"
 rsfs = "0.4.1"
 yasna = "0.1.3"
+rusticata-macros = "0.3.3"    # Helper macros for Rusticata

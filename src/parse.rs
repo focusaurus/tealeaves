@@ -1,5 +1,4 @@
 extern crate byteorder;
-extern crate der_parser;
 use base64;
 use byteorder::{BigEndian, ReadBytesExt};
 use file_info::{Algorithm, CertificateRequest, SshKey};
@@ -8,11 +7,18 @@ use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
 use std::error::Error;
 use std::io;
-use std::io::{ErrorKind, Read};
+use std::io::Read;
+// use std::io::{ErrorKind, Read};
 use yasna;
+use der_parser::{parse_der_integer, DerObject, parse_der};
+// My code does not directly use these names. Why do I need to `use` them?
+use der_parser::{der_read_element_header, DerObjectContent};
+
+// My code does not directly use these names. Why do I need to `use` them?
+use nom::{Err, ErrorKind};
 
 fn bail(message: String) -> io::Error {
-    io::Error::new(ErrorKind::Other, message)
+    io::Error::new(io::ErrorKind::Other, message)
 }
 
 fn is_encrypted(headers: &[HeaderEntry]) -> bool {
@@ -25,6 +31,66 @@ fn is_encrypted(headers: &[HeaderEntry]) -> bool {
 fn bit_count(field: &[u8]) -> usize {
     // exclude leading null byte then convert bytes to bits
     (field.len() - 1) * 8
+}
+
+// fn bit_count(field: Vec<u8>) -> usize {
+//     field.len() * 8
+// }
+
+// https://tools.ietf.org/html/rfc3447#appendix-A.1.2
+/*
+ An RSA private key should be represented with the ASN.1 type
+   RSAPrivateKey:
+
+      RSAPrivateKey ::= SEQUENCE {
+          version           Version,
+          modulus           INTEGER,  -- n
+          publicExponent    INTEGER,  -- e
+          privateExponent   INTEGER,  -- d
+          prime1            INTEGER,  -- p
+          prime2            INTEGER,  -- q
+          exponent1         INTEGER,  -- d mod (p-1)
+          exponent2         INTEGER,  -- d mod (q-1)
+          coefficient       INTEGER,  -- (inverse of q) mod p
+          otherPrimeInfos   OtherPrimeInfos OPTIONAL
+      }
+*/
+fn rsa_private(input: &[u8]) -> Algorithm {
+    match parse_der_sequence_defined!(
+        input,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+        parse_der_integer,
+    ) {
+        IResult::Done(_unparsed_suffix, der) => {
+            assert_eq!(_unparsed_suffix.len(), 0);
+            let der_objects = der.as_sequence().unwrap();
+            // modulus (n) is at index 1
+            // I believe this indexing and unwrapping is safe because
+            // if it parsed correctly, the data should be there
+            let modulus = der_objects[1].content.as_slice().unwrap();
+            // Skip leading null byte.
+            // Also we copy the modulus to an owned Vec<u8> here because
+            // we want to allow the secret parts of the private key to be freed.
+            // We want the secrets in memory as briefly as possible.
+            let modulus = modulus[1..].to_owned();
+            Algorithm::Rsa(modulus)
+        }
+        IResult::Error(error) => {
+            eprintln!("{}", error);
+            Algorithm::Unknown
+        }
+        IResult::Incomplete(_needed) => {
+            eprintln!("{:?}", _needed);
+            Algorithm::Unknown
+        }
+    }
 }
 
 /// Read a length-prefixed field in the format openssh uses
@@ -68,11 +134,13 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-rsa" => {
-            ssh_key.algorithm = Algorithm::Rsa(0);
+            ssh_key.algorithm = Algorithm::Rsa(vec!());
             if !ssh_key.is_encrypted {
+                // fixme figure out if this is ASN.1 or not
                 let _rsa_version = read_field(&mut reader)?;
                 let modulus = read_field(&mut reader)?;
-                ssh_key.algorithm = Algorithm::Rsa(bit_count(&modulus));
+                // skip null byte
+                ssh_key.algorithm = Algorithm::Rsa(modulus[1..].to_owned());
             }
         }
         b"ssh-dss" => {
@@ -99,7 +167,7 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
 }
 
 fn length_seq1(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let der_result = der_parser::parse_der(&asn1_bytes);
+    let der_result = parse_der(&asn1_bytes);
     match der_result {
         IResult::Done(_input, der) => {
             let seq = der.as_sequence().unwrap();
@@ -158,7 +226,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             ssh_key.algorithm = match block.block_type {
                 "DSA PRIVATE KEY" => Algorithm::Dsa(1024),
                 "EC PRIVATE KEY" => Algorithm::Ecdsa(0),
-                "RSA PRIVATE KEY" => Algorithm::Rsa(0),
+                "RSA PRIVATE KEY" => Algorithm::Rsa(vec![]),
                 _ => Algorithm::Unknown,
             };
             if ssh_key.is_encrypted {
@@ -174,7 +242,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                     ssh_key.algorithm = Algorithm::Dsa(length_seq1(&block.data)?);
                 }
                 "RSA PRIVATE KEY" => {
-                    ssh_key.algorithm = Algorithm::Rsa(length_seq1(&block.data)?);
+                    ssh_key.algorithm = rsa_private(&block.data);
                 }
                 "EC PRIVATE KEY" => {
                     ssh_key.algorithm = Algorithm::Ecdsa(get_ecdsa_length(&block.data)?);
@@ -225,7 +293,7 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
         b"ssh-rsa" => {
             let _exponent = read_field(&mut reader).unwrap_or(vec![]);
             let modulus = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.algorithm = Algorithm::Rsa(bit_count(&modulus));
+            ssh_key.algorithm = Algorithm::Rsa(modulus[1..].to_owned());
         }
         _ => (),
     }
@@ -258,7 +326,7 @@ pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
 }
 
 fn parse_certificate_request(asn1_bytes: &[u8]) {
-    let der_result = der_parser::parse_der(&asn1_bytes);
+    let der_result = parse_der(&asn1_bytes);
     match der_result {
         IResult::Done(_input, der) => {
             assert_eq!(_input.len(), 0);

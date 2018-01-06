@@ -1,4 +1,4 @@
-#[macro_use]
+#[macro_use(crate_version)]
 extern crate clap;
 extern crate rsfs;
 extern crate tealeaves;

@@ -12,7 +12,7 @@ pub enum Size {
 pub enum Algorithm {
     Unknown,
     Ed25519,
-    Rsa(usize),
+    Rsa(Vec<u8>),
     Ecdsa(usize),
     Dsa(usize),
 }
@@ -82,7 +82,10 @@ impl fmt::Display for SshKey {
         output.push_str(&format!("{}", self.algorithm));
         if !self.is_encrypted {
             match self.algorithm {
-                Algorithm::Rsa(ref length) | Algorithm::Dsa(ref length) => {
+                Algorithm::Rsa(ref modulus)  => {
+                    output.push_str(&format!(", {} bits", modulus.len() * 8));
+                }
+                Algorithm::Dsa(ref length) => {
                     output.push_str(&format!(", {} bits", length));
                 }
                 _ => (),
@@ -147,8 +150,8 @@ impl fmt::Display for FileInfo {
             Some(ref key) => {
                 output.push_str(&format!("\t✓ {}", key));
                 match key.algorithm {
-                    Algorithm::Rsa(length) => {
-                        if !key.is_encrypted && length < 2048 {
+                    Algorithm::Rsa(ref modulus) => {
+                        if !key.is_encrypted && modulus.len() < (2048/8) {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
@@ -251,6 +254,9 @@ mod tests {
 
     #[test]
     fn test_file_info_display_rsa_public() {
+        let fake_modulus = [0u8;256];
+        let mut modulus = vec!();
+        modulus.extend_from_slice(&[0u8;256]);
         let mut file_info = FileInfo::new();
         file_info.path_buf = path::PathBuf::from("/unit-test");
         file_info.is_file = true;
@@ -258,7 +264,7 @@ mod tests {
         file_info.is_readable = true;
         file_info.size = Size::Medium;
         let mut ssh_key: SshKey = Default::default();
-        ssh_key.algorithm = Algorithm::Rsa(2048);
+        ssh_key.algorithm = Algorithm::Rsa(modulus);
         ssh_key.is_public = true;
         file_info.ssh_key = Some(ssh_key);
         assert_eq!(
@@ -277,7 +283,7 @@ mod tests {
         file_info.size = Size::Medium;
         let mut ssh_key: SshKey = Default::default();
         ssh_key.is_encrypted = true;
-        ssh_key.algorithm = Algorithm::Rsa(0);
+        ssh_key.algorithm = Algorithm::Rsa(vec!());
         file_info.ssh_key = Some(ssh_key);
         assert_eq!(
             "/unit-test\n\t✓ private ssh key (rsa, encrypted)\n",

@@ -500,3 +500,4 @@ a1 tagged 1
 - matching of PEM tag ascii and info in base64 to detect PEM tag tampering
 
 dump-ssh-key files/ssh-01-ed25519-private-key.pem | tr -d '\n' | fold -w 32
+- https://tools.ietf.org/html/rfc3447#appendix-A.1
