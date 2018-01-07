@@ -5,7 +5,7 @@ use tealeaves::parse::private_key;
 use tealeaves::file_info::Algorithm;
 
 fn test_vec(length: usize) -> Vec<u8> {
-    let mut modulus = vec!();
+    let mut modulus = vec![];
     modulus.resize(length, 0);
     modulus
 }
@@ -125,7 +125,10 @@ fn rsa_1024_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(test_vec(2048)));
+            match ssh_key.algorithm {
+                Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 1024),
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -143,7 +146,10 @@ fn rsa_2048_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(test_vec(2048)));
+            match ssh_key.algorithm {
+                Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 2048),
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -161,7 +167,10 @@ fn rsa_4096_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(test_vec(4096)));
+            match ssh_key.algorithm {
+                Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 4096),
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);

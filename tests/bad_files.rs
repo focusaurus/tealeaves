@@ -155,6 +155,7 @@ fn asn1_error_gets_detected() {
         pem.write_all(tag.as_bytes()).unwrap();
         pem.write_all(b" PRIVATE KEY-----\n").unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
+        println!("{:?}", file_info);
         assert!(file_info.error.is_some());
     }
 }

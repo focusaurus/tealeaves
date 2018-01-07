@@ -4,11 +4,6 @@ use std::io::Read;
 use tealeaves::file_info::Algorithm;
 use tealeaves::parse::public_key;
 
-fn test_vec(length: usize) -> Vec<u8> {
-    let mut modulus = vec!();
-    modulus.resize(length, 0);
-    modulus
-}
 #[test]
 fn ed25519_public() {
     let mut file = fs::File::open("./files/ssh-ed25519-a-public-key").unwrap();
@@ -34,7 +29,10 @@ fn rsa_1024_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(test_vec(1024)));
+            match ssh_key.algorithm {
+                Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 1024),
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".into()));
             assert_eq!(ssh_key.is_encrypted, false);
@@ -52,7 +50,10 @@ fn rsa_2048_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Rsa(test_vec(2048)));
+            match ssh_key.algorithm {
+                Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 2048),
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".into()));
             assert_eq!(ssh_key.is_encrypted, false);

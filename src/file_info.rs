@@ -82,7 +82,7 @@ impl fmt::Display for SshKey {
         output.push_str(&format!("{}", self.algorithm));
         if !self.is_encrypted {
             match self.algorithm {
-                Algorithm::Rsa(ref modulus)  => {
+                Algorithm::Rsa(ref modulus) => {
                     output.push_str(&format!(", {} bits", modulus.len() * 8));
                 }
                 Algorithm::Dsa(ref length) => {
@@ -151,7 +151,7 @@ impl fmt::Display for FileInfo {
                 output.push_str(&format!("\t✓ {}", key));
                 match key.algorithm {
                     Algorithm::Rsa(ref modulus) => {
-                        if !key.is_encrypted && modulus.len() < (2048/8) {
+                        if !key.is_encrypted && modulus.len() < (2048 / 8) {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
@@ -254,9 +254,8 @@ mod tests {
 
     #[test]
     fn test_file_info_display_rsa_public() {
-        let fake_modulus = [0u8;256];
-        let mut modulus = vec!();
-        modulus.extend_from_slice(&[0u8;256]);
+        let mut modulus = vec![];
+        modulus.extend_from_slice(&[0u8; 256]);
         let mut file_info = FileInfo::new();
         file_info.path_buf = path::PathBuf::from("/unit-test");
         file_info.is_file = true;
@@ -283,7 +282,7 @@ mod tests {
         file_info.size = Size::Medium;
         let mut ssh_key: SshKey = Default::default();
         ssh_key.is_encrypted = true;
-        ssh_key.algorithm = Algorithm::Rsa(vec!());
+        ssh_key.algorithm = Algorithm::Rsa(vec![]);
         file_info.ssh_key = Some(ssh_key);
         assert_eq!(
             "/unit-test\n\t✓ private ssh key (rsa, encrypted)\n",

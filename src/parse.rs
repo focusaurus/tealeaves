@@ -10,7 +10,7 @@ use std::io;
 use std::io::Read;
 // use std::io::{ErrorKind, Read};
 use yasna;
-use der_parser::{parse_der_integer, DerObject, parse_der};
+use der_parser::{parse_der, parse_der_integer, DerObject};
 // My code does not directly use these names. Why do I need to `use` them?
 use der_parser::{der_read_element_header, DerObjectContent};
 
@@ -55,7 +55,7 @@ fn bit_count(field: &[u8]) -> usize {
           otherPrimeInfos   OtherPrimeInfos OPTIONAL
       }
 */
-fn rsa_private(input: &[u8]) -> Algorithm {
+fn rsa_private(input: &[u8]) -> Result<Algorithm, String> {
     match parse_der_sequence_defined!(
         input,
         parse_der_integer,
@@ -80,16 +80,13 @@ fn rsa_private(input: &[u8]) -> Algorithm {
             // we want to allow the secret parts of the private key to be freed.
             // We want the secrets in memory as briefly as possible.
             let modulus = modulus[1..].to_owned();
-            Algorithm::Rsa(modulus)
+            Ok(Algorithm::Rsa(modulus))
         }
         IResult::Error(error) => {
-            eprintln!("{}", error);
-            Algorithm::Unknown
+            // eprintln!("{}", error);
+            Err(format!("{}", error))
         }
-        IResult::Incomplete(_needed) => {
-            eprintln!("{:?}", _needed);
-            Algorithm::Unknown
-        }
+        IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
     }
 }
 
@@ -134,7 +131,7 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-rsa" => {
-            ssh_key.algorithm = Algorithm::Rsa(vec!());
+            ssh_key.algorithm = Algorithm::Rsa(vec![]);
             if !ssh_key.is_encrypted {
                 // fixme figure out if this is ASN.1 or not
                 let _rsa_version = read_field(&mut reader)?;
@@ -176,12 +173,8 @@ fn length_seq1(asn1_bytes: &[u8]) -> Result<usize, String> {
             // Length in bits, discount null byte at start then multiply byte count by 8
             Ok((field.len() - 1) * 8)
         }
-        IResult::Error(error) => {
-            Err(format!("Error parsing key file: {}", error))
-        }
-        IResult::Incomplete(_needed) => {
-            Err("Error parsing: incomplete".into())
-        }
+        IResult::Error(error) => Err(format!("Error parsing key file: {}", error)),
+        IResult::Incomplete(_needed) => Err("Error parsing: incomplete".into()),
     }
 }
 
@@ -242,7 +235,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                     ssh_key.algorithm = Algorithm::Dsa(length_seq1(&block.data)?);
                 }
                 "RSA PRIVATE KEY" => {
-                    ssh_key.algorithm = rsa_private(&block.data);
+                    ssh_key.algorithm = rsa_private(&block.data)?;
                 }
                 "EC PRIVATE KEY" => {
                     ssh_key.algorithm = Algorithm::Ecdsa(get_ecdsa_length(&block.data)?);
