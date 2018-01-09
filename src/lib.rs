@@ -2,7 +2,6 @@ extern crate base64;
 extern crate byteorder;
 extern crate nom_pem;
 extern crate rsfs;
-extern crate yasna;
 pub mod file_info;
 pub mod parse;
 use file_info::FileInfo;
@@ -12,7 +11,7 @@ use rsfs::unix_ext::*;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-#[macro_use]
+#[macro_use(call, do_parse, map, named, is_a_s, is_a, is_not_s, is_not, error_position, take)]
 extern crate nom;
 
 #[macro_use(parse_der_sequence_defined, parse_der_defined, fold_parsers)]

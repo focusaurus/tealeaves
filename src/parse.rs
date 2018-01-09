@@ -5,14 +5,15 @@ use file_info::{Algorithm, CertificateRequest, SshKey};
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
-use std::error::Error;
 use std::io;
 use std::io::Read;
 // use std::io::{ErrorKind, Read};
-use yasna;
-use der_parser::{parse_der, parse_der_integer, DerObject};
+use der_parser::{der_read_element_content_as, parse_der, parse_der_implicit, parse_der_integer,
+                 parse_der_octetstring, DerObject, DerObjectContent, DerTag};
+use der_parser::oid::Oid;
+
 // My code does not directly use these names. Why do I need to `use` them?
-use der_parser::{der_read_element_header, DerObjectContent};
+use der_parser::der_read_element_header;
 
 // My code does not directly use these names. Why do I need to `use` them?
 use nom::{Err, ErrorKind};
@@ -86,6 +87,77 @@ fn rsa_private(input: &[u8]) -> Result<Algorithm, String> {
             // eprintln!("{}", error);
             Err(format!("{}", error))
         }
+        IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
+    }
+}
+
+fn der_read_oid_content(i: &[u8], _tag: u8, len: usize) -> IResult<&[u8], DerObjectContent, u32> {
+    der_read_element_content_as(i, DerTag::Oid as u8, len)
+}
+
+fn der_read_bitstring_content(
+    i: &[u8],
+    _tag: u8,
+    len: usize,
+) -> IResult<&[u8], DerObjectContent, u32> {
+    der_read_element_content_as(i, DerTag::BitString as u8, len)
+}
+
+fn parse_oid(i: &[u8]) -> IResult<&[u8], DerObject> {
+    parse_der_implicit(i, 0, der_read_oid_content)
+}
+
+fn parse_bitstring(i: &[u8]) -> IResult<&[u8], DerObject> {
+    parse_der_implicit(i, 1, der_read_bitstring_content)
+}
+
+// http://www.secg.org/sec1-v2.pdf
+/*
+SEC1-PDU ::= CHOICE {
+privateKey [0] ECPrivateKey,
+spki [1] SubjectPublicKeyInfo, ecdsa [2] ECDSA-Signature,
+ecies [3] ECIES-Ciphertext-Value, sharedinfo [4] ASN1SharedInfo, ...
+}
+    0:d=0  hl=2 l= 119 cons: SEQUENCE
+    2:d=1  hl=2 l=   1 prim: INTEGER           :01
+    5:d=1  hl=2 l=  32 prim: OCTET STRING
+         [HEX DUMP]:
+         0C52C1C9D109E29905AD274AEC946E18DF72C37BA8090D96A60A4229073B9F40
+   39:d=1  hl=2 l=  10 cons: cont [ 0 ]
+   41:d=2  hl=2 l=   8 prim: OBJECT            :prime256v1
+   51:d=1  hl=2 l=  68 cons: cont [ 1 ]
+   53:d=2  hl=2 l=  66 prim: BIT STRING
+*/
+fn ecdsa_private(input: &[u8]) -> Result<Algorithm, String> {
+    match parse_der_sequence_defined!(
+        input,
+        parse_der_integer,
+        parse_der_octetstring,
+        parse_oid,
+        parse_bitstring,
+    ) {
+        IResult::Done(_unparsed_suffix, der) => {
+            assert_eq!(_unparsed_suffix.len(), 0);
+            let content = der.as_sequence().unwrap()[2]
+                .content
+                .as_context_specific()
+                .unwrap()
+                .1
+                .unwrap()
+                .content;
+            let oid = content.as_oid().unwrap();
+            if oid == &Oid::from(&[0u64, 6, 8, 42, 840, 10_045, 3, 1, 7]) {
+                return Ok(Algorithm::Ecdsa(256));
+            }
+            if oid == &Oid::from(&[0u64, 6, 5, 43, 132, 0, 34]) {
+                return Ok(Algorithm::Ecdsa(384));
+            }
+            if oid == &Oid::from(&[0u64, 6, 5, 43, 132, 0, 35]) {
+                return Ok(Algorithm::Ecdsa(521));
+            }
+            return Ok(Algorithm::Unknown);
+        }
+        IResult::Error(error) => Err(format!("{}", error)),
         IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
     }
 }
@@ -178,39 +250,6 @@ fn length_seq1(asn1_bytes: &[u8]) -> Result<usize, String> {
     }
 }
 
-fn get_ecdsa_length(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
-        reader.read_sequence(|reader| {
-            let _ = reader.next().read_i8()?;
-            let _ = reader.next().read_bytes()?;
-            let oid = reader
-                .next()
-                .read_tagged(yasna::Tag::context(0), |reader| reader.read_oid())
-                .unwrap();
-            let _discard = reader
-                .next()
-                .read_tagged(yasna::Tag::context(1), |reader| reader.read_bitvec());
-
-            if oid.components().as_slice() == [1u64, 2, 840, 10_045, 3, 1, 7] {
-                return Ok(256);
-            }
-            if oid.components().as_slice() == [1u64, 3, 132, 0, 34] {
-                return Ok(384);
-            }
-            if oid.components().as_slice() == [1u64, 3, 132, 0, 35] {
-                return Ok(521);
-            }
-
-            Ok(0)
-        })
-    });
-    match asn_result {
-        Ok(0) => Err("Unrecognized ecdsa curve".into()),
-        Ok(bits) => Ok(bits),
-        Err(error) => Err(error.description().into()),
-    }
-}
-
 pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_pem::decode_block(bytes) {
         Ok(block) => {
@@ -238,7 +277,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                     ssh_key.algorithm = rsa_private(&block.data)?;
                 }
                 "EC PRIVATE KEY" => {
-                    ssh_key.algorithm = Algorithm::Ecdsa(get_ecdsa_length(&block.data)?);
+                    ssh_key.algorithm = ecdsa_private(&block.data)?;
                 }
                 "OPENSSH PRIVATE KEY" => {
                     if block.data.starts_with(b"openssh-key-v1") {
@@ -357,29 +396,8 @@ fn parse_certificate_request(asn1_bytes: &[u8]) {
             // Err(der_parser::DerError::DerValueError)
         }
     };
-    /*    let asn_result = yasna::parse_der(asn1_bytes, |reader| {
-        reader.read_sequence(|reader| {
-            let wtf = reader.next().read_i8()?;
-            reader.read_sequence(|reader|{
-                let object_type  = reader.next().read_oid().unwrap();
-                let country = reader.next().read_blah().unwrap();
-
-            })
-            // let oid = reader
-            //     .next()
-            //     .read_tagged(yasna::Tag::context(0), |reader| reader.read_i8())
-            //     .unwrap();
-        })
-    });
-    match asn_result {
-        Ok(bits) => Ok(bits),
-        Err(error) => {
-            // println!("ERROR {:?}", error);
-            Err(error.description().to_string())
-        }
-    };
-*/
 }
+
 pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
     match nom_pem::decode_block(bytes) {
         Ok(block) => {
