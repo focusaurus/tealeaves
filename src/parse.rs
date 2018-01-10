@@ -29,14 +29,33 @@ fn is_encrypted(headers: &[HeaderEntry]) -> bool {
     })
 }
 
-fn bit_count(field: &[u8]) -> usize {
-    // exclude leading null byte then convert bytes to bits
-    (field.len() - 1) * 8
+fn bit_count(field: Vec<u8>) -> usize {
+    field.len() * 8
 }
 
-// fn bit_count(field: Vec<u8>) -> usize {
-//     field.len() * 8
-// }
+// https://superuser.com/a/820638/34245
+fn dsa_private(input: &[u8]) -> Result<Algorithm, String> {
+    match parse_der_sequence_defined!(
+        input,
+        parse_der_integer, // version
+        parse_der_integer, // p
+        parse_der_integer, // q
+        parse_der_integer, // g
+        parse_der_integer, // public_key
+        parse_der_integer, // private_key
+    ) {
+        IResult::Done(_unparsed_suffix, der) => {
+            assert_eq!(_unparsed_suffix.len(), 0);
+            let der_objects = der.as_sequence().unwrap();
+            let p_integer = der_objects[1].content.as_slice().unwrap();
+            // strip leading null byte
+            let p_integer = &p_integer[1..];
+            return Ok(Algorithm::Dsa(p_integer.to_owned()));
+        }
+        IResult::Error(error) => Err(format!("{}", error)),
+        IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
+    }
+}
 
 // https://tools.ietf.org/html/rfc3447#appendix-A.1.2
 /*
@@ -213,10 +232,10 @@ fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
             }
         }
         b"ssh-dss" => {
-            ssh_key.algorithm = Algorithm::Dsa(1024);
+            ssh_key.algorithm = Algorithm::Dsa(vec![]);
             if !ssh_key.is_encrypted {
-                let int2 = read_field(&mut reader)?;
-                ssh_key.algorithm = Algorithm::Dsa(bit_count(&int2));
+                let p_integer = read_field(&mut reader)?;
+                ssh_key.algorithm = Algorithm::Dsa(p_integer[1..].to_owned());
             }
         }
         b"ecdsa-sha2-nistp256" => {
@@ -256,7 +275,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_encrypted = is_encrypted(&block.headers);
             ssh_key.algorithm = match block.block_type {
-                "DSA PRIVATE KEY" => Algorithm::Dsa(1024),
+                "DSA PRIVATE KEY" => Algorithm::Dsa(vec![]),
                 "EC PRIVATE KEY" => Algorithm::Ecdsa(0),
                 "RSA PRIVATE KEY" => Algorithm::Rsa(vec![]),
                 _ => Algorithm::Unknown,
@@ -268,10 +287,10 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             match block.block_type {
                 "CERTIFICATE REQUEST" => {
                     // TODO handle CSR
-                    ssh_key.algorithm = Algorithm::Dsa(length_seq1(&block.data)?);
+                    ssh_key.algorithm = Algorithm::Dsa(vec![]);
                 }
                 "DSA PRIVATE KEY" => {
-                    ssh_key.algorithm = Algorithm::Dsa(length_seq1(&block.data)?);
+                    ssh_key.algorithm = dsa_private(&block.data)?;
                 }
                 "RSA PRIVATE KEY" => {
                     ssh_key.algorithm = rsa_private(&block.data)?;
@@ -319,8 +338,8 @@ fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
             ssh_key.algorithm = Algorithm::Ed25519;
         }
         b"ssh-dss" => {
-            let int1 = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.algorithm = Algorithm::Dsa(bit_count(&int1));
+            let p_integer = read_field(&mut reader).unwrap_or(vec![]);
+            ssh_key.algorithm = Algorithm::Dsa(p_integer[1..].to_owned());
         }
         b"ssh-rsa" => {
             let _exponent = read_field(&mut reader).unwrap_or(vec![]);

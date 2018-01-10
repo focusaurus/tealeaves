@@ -14,7 +14,7 @@ pub enum Algorithm {
     Ed25519,
     Rsa(Vec<u8>),
     Ecdsa(usize),
-    Dsa(usize),
+    Dsa(Vec<u8>),
 }
 
 impl fmt::Display for Algorithm {
@@ -85,8 +85,8 @@ impl fmt::Display for SshKey {
                 Algorithm::Rsa(ref modulus) => {
                     output.push_str(&format!(", {} bits", modulus.len() * 8));
                 }
-                Algorithm::Dsa(ref length) => {
-                    output.push_str(&format!(", {} bits", length));
+                Algorithm::Dsa(ref p_integer) => {
+                    output.push_str(&format!(", {} bits", p_integer.len() * 8));
                 }
                 _ => (),
             }
@@ -155,8 +155,9 @@ impl fmt::Display for FileInfo {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
-                    Algorithm::Dsa(_) => {
+                    Algorithm::Dsa(ref p_integer) => {
                         output.push_str("\n\t⚠️ dsa keys are considered insecure");
+                        // output.push_str(&format!("\n{:?}", p_integer));
                     }
                     Algorithm::Ecdsa(_) => {
                         output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
