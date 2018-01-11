@@ -187,7 +187,7 @@ string	publickey1
 string	publickey2
 */
 named!(
-    nom_openssh_key_v1<(&[u8], &[u8])>,
+    nom_openssh_key_v1_private<(&[u8], &[u8])>,
     do_parse!(
         tag!(b"openssh-key-v1\0") >> cipher_name: length_bytes!(be_u32)
             >> kdf_name: length_bytes!(be_u32) >> kdf_options: length_bytes!(be_u32)
@@ -197,7 +197,7 @@ named!(
 );
 
 named!(
-    nom_ssh_rsa<(&[u8])>,
+    nom_rsa_private<(&[u8])>,
     do_parse!(
         cipher_name: length_bytes!(be_u32) >> _version: length_bytes!(be_u32)
             >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
@@ -205,10 +205,17 @@ named!(
 );
 
 named!(
-    nom_ssh_dss<(&[u8])>,
+    nom_dss<(&[u8])>,
     do_parse!(
-        cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32)
-            >> (&p_integer[1..])
+        cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32) >> (&p_integer[1..])
+    )
+);
+
+named!(
+    nom_rsa_public<(&[u8])>,
+    do_parse!(
+        cipher_name: length_bytes!(be_u32) >> exponent: length_bytes!(be_u32)
+            >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
     )
 );
 
@@ -226,51 +233,33 @@ fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
 }
 
 fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
-    match nom_openssh_key_v1(bytes) {
+    match nom_openssh_key_v1_private(bytes) {
         IResult::Done(_tail, (cipher_name, key_bytes)) => {
             let mut ssh_key: SshKey = Default::default();
+            ssh_key.algorithm = peek_algorithm(&key_bytes);
             ssh_key.is_encrypted = cipher_name != b"none";
-            // Skip 4-byte length indicator
-            let algorithm_name = &key_bytes[4..];
-            if algorithm_name.starts_with(b"ssh-ed25519") {
-                ssh_key.algorithm = Algorithm::Ed25519;
+            if ssh_key.is_encrypted {
+                return Ok(ssh_key);
             }
-            if algorithm_name.starts_with(b"ssh-dss") {
-                ssh_key.algorithm = Algorithm::Dsa(vec![]);
-                if !ssh_key.is_encrypted {
-                    return match nom_ssh_dss(&key_bytes) {
-                        IResult::Done(_tail, p_integer) => {
-                            ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
-                            Ok(ssh_key)
-                        }
-                        IResult::Error(_error) => Err("Parse error".into()),
-                        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-                    };
-                }
+            match ssh_key.algorithm {
+                Algorithm::Dsa(_) => match nom_dss(&key_bytes) {
+                    IResult::Done(_tail, p_integer) => {
+                        ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
+                        Ok(ssh_key)
+                    }
+                    IResult::Error(_error) => Err("Parse error".into()),
+                    IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+                },
+                Algorithm::Rsa(_) => match nom_rsa_private(&key_bytes) {
+                    IResult::Done(_tail, modulus) => {
+                        ssh_key.algorithm = Algorithm::Rsa(modulus.to_owned());
+                        Ok(ssh_key)
+                    }
+                    IResult::Error(_error) => Err("Parse error".into()),
+                    IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+                },
+                _ => Ok(ssh_key),
             }
-            if algorithm_name.starts_with(b"ssh-rsa") {
-                ssh_key.algorithm = Algorithm::Rsa(vec![]);
-                if !ssh_key.is_encrypted {
-                    return match nom_ssh_rsa(&key_bytes) {
-                        IResult::Done(_tail, p_integer) => {
-                            ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
-                            Ok(ssh_key)
-                        }
-                        IResult::Error(_error) => Err("Parse error".into()),
-                        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-                    };
-                }
-            }
-            if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
-                ssh_key.algorithm = Algorithm::Ecdsa(256);
-            }
-            if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
-                ssh_key.algorithm = Algorithm::Ecdsa(384);
-            }
-            if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
-                ssh_key.algorithm = Algorithm::Ecdsa(521);
-            }
-            Ok(ssh_key)
         }
         IResult::Error(_error) => Err("Parse error".into()),
         IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
@@ -308,14 +297,6 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                 }
                 "OPENSSH PRIVATE KEY" => {
                     if block.data.starts_with(b"openssh-key-v1\0") {
-                        // match identify_openssh_v1(&block.data) {
-                        //     Ok(key) => {
-                        //         ssh_key = key;
-                        //     }
-                        //     Err(error) => {
-                        //         return Err(format!("openssh-key-v1 error: {:?}", error));
-                        //     }
-                        // }
                         match openssh_key_v1_private(&block.data) {
                             Ok(key) => {
                                 ssh_key = key;
@@ -337,55 +318,71 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
     }
 }
 
-fn algo_and_length(ssh_key: &mut SshKey, bytes: &[u8]) {
-    let mut reader = io::BufReader::new(bytes);
-    let algorithm = read_field(&mut reader).unwrap_or(vec![]);
-    match algorithm.as_slice() {
-        b"ecdsa-sha2-nistp256" => {
-            ssh_key.algorithm = Algorithm::Ecdsa(256);
-        }
-        b"ecdsa-sha2-nistp384" => {
-            ssh_key.algorithm = Algorithm::Ecdsa(384);
-        }
-        b"ecdsa-sha2-nistp521" => {
-            ssh_key.algorithm = Algorithm::Ecdsa(521);
-        }
-        b"ssh-ed25519" => {
-            ssh_key.algorithm = Algorithm::Ed25519;
-        }
-        b"ssh-dss" => {
-            let p_integer = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.algorithm = Algorithm::Dsa(p_integer[1..].to_owned());
-        }
-        b"ssh-rsa" => {
-            let _exponent = read_field(&mut reader).unwrap_or(vec![]);
-            let modulus = read_field(&mut reader).unwrap_or(vec![]);
-            ssh_key.algorithm = Algorithm::Rsa(modulus[1..].to_owned());
-        }
-        _ => (),
+named!(space_sep, is_a_s!(" \t"));
+named!(value, is_not_s!(" \t"));
+named!(
+    nom_public_key<(&[u8], &[u8], &[u8])>,
+    do_parse!(
+        algorithm: value >> separator: space_sep >> payload: value >> separator: space_sep
+            >> comment: is_not_s!("\r\n") >> (algorithm, payload, comment)
+    )
+);
+
+fn peek_algorithm(key_bytes: &[u8]) -> Algorithm {
+    // Skip 4-byte length indicator
+    let algorithm_name = &key_bytes[4..];
+    if algorithm_name.starts_with(b"ssh-ed25519") {
+        return Algorithm::Ed25519;
     }
+    if algorithm_name.starts_with(b"ssh-dss") {
+        return Algorithm::Dsa(vec![]);
+    }
+    if algorithm_name.starts_with(b"ssh-rsa") {
+        return Algorithm::Rsa(vec![]);
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
+        return Algorithm::Ecdsa(256);
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
+        return Algorithm::Ecdsa(384);
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
+        return Algorithm::Ecdsa(521);
+    }
+    Algorithm::Unknown
 }
 
 pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
-    named!(space_sep, is_a_s!(" \t"));
-    named!(value, is_not_s!(" \t"));
-    named!(
-        nom_public_key<(&[u8], &[u8], &[u8])>,
-        do_parse!(
-            algorithm: value >> separator: space_sep >> payload: value >> separator: space_sep
-                >> comment: is_not_s!("\r\n") >> (algorithm, payload, comment)
-        )
-    );
     match nom_public_key(bytes) {
         IResult::Done(_input, (_label, payload, comment)) => {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_public = true;
             ssh_key.comment = Some(String::from_utf8_lossy(comment).into_owned());
-            let result = base64::decode(payload);
-            if let Ok(decoded) = result {
-                algo_and_length(&mut ssh_key, &decoded);
+            match base64::decode(payload) {
+                Ok(key_bytes) => {
+                    ssh_key.algorithm = peek_algorithm(&key_bytes);
+                    match ssh_key.algorithm {
+                        Algorithm::Dsa(_) => match nom_dss(&key_bytes) {
+                            IResult::Done(_tail, p_integer) => {
+                                ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
+                                Ok(ssh_key)
+                            }
+                            IResult::Error(_error) => Err("Parse error".into()),
+                            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+                        },
+                        Algorithm::Rsa(_) => match nom_rsa_private(&key_bytes) {
+                            IResult::Done(_tail, modulus) => {
+                                ssh_key.algorithm = Algorithm::Rsa(modulus.to_owned());
+                                Ok(ssh_key)
+                            }
+                            IResult::Error(_error) => Err("Parse error".into()),
+                            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+                        },
+                        _ => Ok(ssh_key),
+                    }
+                }
+                Err(error) => Err("Invalid Base64".into()),
             }
-            Ok(ssh_key)
         }
         IResult::Error(_error) => Err("Parse error".into()),
         IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),

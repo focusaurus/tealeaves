@@ -156,7 +156,7 @@ impl fmt::Display for FileInfo {
                 match key.algorithm {
                     Algorithm::Rsa(ref modulus) => {
                         if !key.is_encrypted && modulus.len() < (2048 / 8) {
-                            output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
+                            output.push_str("\n\t⚠️ RSA keys should be 2048 bits or larger");
                         }
                     }
                     Algorithm::Dsa(_) => {
