@@ -29,10 +29,6 @@ fn is_encrypted(headers: &[HeaderEntry]) -> bool {
     })
 }
 
-fn bit_count(field: Vec<u8>) -> usize {
-    field.len() * 8
-}
-
 // https://superuser.com/a/820638/34245
 fn dsa_private(input: &[u8]) -> Result<Algorithm, String> {
     match parse_der_sequence_defined!(
@@ -201,18 +197,18 @@ named!(
 );
 
 named!(
-    nom_ssh_rsa<(&[u8], &[u8])>,
+    nom_ssh_rsa<(&[u8])>,
     do_parse!(
         cipher_name: length_bytes!(be_u32) >> _version: length_bytes!(be_u32)
-            >> modulus: length_bytes!(be_u32) >> (cipher_name, &modulus[1..])
+            >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
     )
 );
 
 named!(
-    nom_ssh_dss<(&[u8], &[u8])>,
+    nom_ssh_dss<(&[u8])>,
     do_parse!(
         cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32)
-        >> (cipher_name, &p_integer[1..])
+            >> (&p_integer[1..])
     )
 );
 
@@ -236,11 +232,14 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
             ssh_key.is_encrypted = cipher_name != b"none";
             // Skip 4-byte length indicator
             let algorithm_name = &key_bytes[4..];
+            if algorithm_name.starts_with(b"ssh-ed25519") {
+                ssh_key.algorithm = Algorithm::Ed25519;
+            }
             if algorithm_name.starts_with(b"ssh-dss") {
                 ssh_key.algorithm = Algorithm::Dsa(vec![]);
                 if !ssh_key.is_encrypted {
                     return match nom_ssh_dss(&key_bytes) {
-                        IResult::Done(_tail, (algorithm, p_integer)) => {
+                        IResult::Done(_tail, p_integer) => {
                             ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
                             Ok(ssh_key)
                         }
@@ -253,7 +252,7 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
                 ssh_key.algorithm = Algorithm::Rsa(vec![]);
                 if !ssh_key.is_encrypted {
                     return match nom_ssh_rsa(&key_bytes) {
-                        IResult::Done(_tail, (algorithm, p_integer)) => {
+                        IResult::Done(_tail, p_integer) => {
                             ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
                             Ok(ssh_key)
                         }
@@ -261,13 +260,6 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
                         IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
                     };
                 }
-            }
-            if algorithm_name.starts_with(b"ssh-dss") {
-                ssh_key.algorithm = Algorithm::Dsa(vec![]);
-                // if !ssh_key.is_encrypted {
-                //     let p_integer = read_field(&mut reader)?;
-                //     ssh_key.algorithm = Algorithm::Dsa(p_integer[1..].to_owned());
-                // }
             }
             if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
                 ssh_key.algorithm = Algorithm::Ecdsa(256);
@@ -282,81 +274,6 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
         }
         IResult::Error(_error) => Err("Parse error".into()),
         IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-    }
-}
-
-fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
-    /*
-    byte[]	AUTH_MAGIC
-    string	ciphername
-    string	kdfname
-    string	kdfoptions
-    int	number of keys N
-    string	publickey1
-    string	publickey2
-    */
-
-    let prefix = b"openssh-key-v1";
-    let mut ssh_key: SshKey = Default::default();
-    // Make a reader for everything after the prefix plus the null byte
-    let mut reader = io::BufReader::new(&bytes[prefix.len() + 1..]);
-    let cipher_name = read_field(&mut reader)?;
-    let _kdfname = read_field(&mut reader);
-    // kdfoptions (don't really care)
-    let _kdfoptions = read_field(&mut reader);
-    let _pub_key_count = reader.read_u32::<BigEndian>()?;
-    let _key_length = reader.read_u32::<BigEndian>()?;
-    let key_type = read_field(&mut reader)?;
-    ssh_key.is_encrypted = cipher_name.as_slice() != b"none";
-    match key_type.as_slice() {
-        b"ssh-ed25519" => {
-            ssh_key.algorithm = Algorithm::Ed25519;
-        }
-        b"ssh-rsa" => {
-            ssh_key.algorithm = Algorithm::Rsa(vec![]);
-            if !ssh_key.is_encrypted {
-                // fixme figure out if this is ASN.1 or not
-                let _rsa_version = read_field(&mut reader)?;
-                let modulus = read_field(&mut reader)?;
-                // skip null byte
-                ssh_key.algorithm = Algorithm::Rsa(modulus[1..].to_owned());
-            }
-        }
-        b"ssh-dss" => {
-            ssh_key.algorithm = Algorithm::Dsa(vec![]);
-            if !ssh_key.is_encrypted {
-                let p_integer = read_field(&mut reader)?;
-                ssh_key.algorithm = Algorithm::Dsa(p_integer[1..].to_owned());
-            }
-        }
-        b"ecdsa-sha2-nistp256" => {
-            ssh_key.algorithm = Algorithm::Ecdsa(256);
-        }
-        b"ecdsa-sha2-nistp384" => {
-            ssh_key.algorithm = Algorithm::Ecdsa(384);
-        }
-        b"ecdsa-sha2-nistp521" => {
-            ssh_key.algorithm = Algorithm::Ecdsa(521);
-        }
-        _ => {
-            ssh_key.algorithm = Algorithm::Unknown;
-        }
-    };
-    Ok(ssh_key)
-}
-
-fn length_seq1(asn1_bytes: &[u8]) -> Result<usize, String> {
-    let der_result = parse_der(&asn1_bytes);
-    match der_result {
-        IResult::Done(_input, der) => {
-            let seq = der.as_sequence().unwrap();
-            let _version = seq[0].as_u32().unwrap();
-            let field = seq[1].content.as_slice().unwrap();
-            // Length in bits, discount null byte at start then multiply byte count by 8
-            Ok((field.len() - 1) * 8)
-        }
-        IResult::Error(error) => Err(format!("Error parsing key file: {}", error)),
-        IResult::Incomplete(_needed) => Err("Error parsing: incomplete".into()),
     }
 }
 

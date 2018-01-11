@@ -70,6 +70,10 @@ impl SshKey {
     }
 }
 
+fn bit_count(field: &Vec<u8>) -> usize {
+    field.len() * 8
+}
+
 impl fmt::Display for SshKey {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
@@ -83,10 +87,10 @@ impl fmt::Display for SshKey {
         if !self.is_encrypted {
             match self.algorithm {
                 Algorithm::Rsa(ref modulus) => {
-                    output.push_str(&format!(", {} bits", modulus.len() * 8));
+                    output.push_str(&format!(", {} bits", bit_count(modulus)));
                 }
                 Algorithm::Dsa(ref p_integer) => {
-                    output.push_str(&format!(", {} bits", p_integer.len() * 8));
+                    output.push_str(&format!(", {} bits", bit_count(p_integer)));
                 }
                 _ => (),
             }
@@ -155,9 +159,8 @@ impl fmt::Display for FileInfo {
                             output.push_str("\n\t⚠️ RSA keys should be 2048 bit or larger");
                         }
                     }
-                    Algorithm::Dsa(ref p_integer) => {
+                    Algorithm::Dsa(_) => {
                         output.push_str("\n\t⚠️ dsa keys are considered insecure");
-                        // output.push_str(&format!("\n{:?}", p_integer));
                     }
                     Algorithm::Ecdsa(_) => {
                         output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
