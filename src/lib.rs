@@ -11,7 +11,8 @@ use rsfs::unix_ext::*;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-#[macro_use(call, do_parse, map, named, is_a_s, is_a, is_not_s, is_not, error_position, take)]
+#[macro_use(call, do_parse, error_position, is_a_s, is_a, is_not_s, is_not, length_bytes,
+            length_data, map, named, tag, take)]
 extern crate nom;
 
 #[macro_use(parse_der_sequence_defined, parse_der_defined, fold_parsers)]

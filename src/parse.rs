@@ -16,7 +16,7 @@ use der_parser::oid::Oid;
 use der_parser::der_read_element_header;
 
 // My code does not directly use these names. Why do I need to `use` them?
-use nom::{Err, ErrorKind};
+use nom::{Err, ErrorKind, be_u32};
 
 fn bail(message: String) -> io::Error {
     io::Error::new(io::ErrorKind::Other, message)
@@ -181,6 +181,41 @@ fn ecdsa_private(input: &[u8]) -> Result<Algorithm, String> {
     }
 }
 
+/*
+byte[]	AUTH_MAGIC
+string	ciphername
+string	kdfname
+string	kdfoptions
+int	number of keys N
+string	publickey1
+string	publickey2
+*/
+named!(
+    nom_openssh_key_v1<(&[u8], &[u8])>,
+    do_parse!(
+        tag!(b"openssh-key-v1\0") >> cipher_name: length_bytes!(be_u32)
+            >> kdf_name: length_bytes!(be_u32) >> kdf_options: length_bytes!(be_u32)
+            >> key_count: tag!(&[0, 0, 0, 1]) >> key: length_bytes!(be_u32)
+            >> (cipher_name, key)
+    )
+);
+
+named!(
+    nom_ssh_rsa<(&[u8], &[u8])>,
+    do_parse!(
+        cipher_name: length_bytes!(be_u32) >> _version: length_bytes!(be_u32)
+            >> modulus: length_bytes!(be_u32) >> (cipher_name, &modulus[1..])
+    )
+);
+
+named!(
+    nom_ssh_dss<(&[u8], &[u8])>,
+    do_parse!(
+        cipher_name: length_bytes!(be_u32) >> int1: length_bytes!(be_u32)
+            >> int2: length_bytes!(be_u32) >> (cipher_name, &int1[1..])
+    )
+);
+
 /// Read a length-prefixed field in the format openssh uses
 /// which is a 4-byte big-endian u32 length
 /// followed by that many bytes of payload
@@ -192,6 +227,62 @@ fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
     let mut word = vec![0u8; len as usize];
     reader.read_exact(&mut word.as_mut_slice())?;
     Ok(word)
+}
+
+fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
+    match nom_openssh_key_v1(bytes) {
+        IResult::Done(_tail, (cipher_name, key_bytes)) => {
+            let mut ssh_key: SshKey = Default::default();
+            ssh_key.is_encrypted = cipher_name != b"none";
+            // Skip 4-byte length indicator
+            let algorithm_name = &key_bytes[4..];
+            if algorithm_name.starts_with(b"ssh-dss") {
+                ssh_key.algorithm = Algorithm::Dsa(vec![]);
+                if !ssh_key.is_encrypted {
+                    return match nom_ssh_dss(&key_bytes) {
+                        IResult::Done(_tail, (algorithm, p_integer)) => {
+                            ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
+                            Ok(ssh_key)
+                        }
+                        IResult::Error(_error) => Err("Parse error".into()),
+                        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+                    };
+                }
+            }
+            if algorithm_name.starts_with(b"ssh-rsa") {
+                ssh_key.algorithm = Algorithm::Rsa(vec![]);
+                if !ssh_key.is_encrypted {
+                    return match nom_ssh_rsa(&key_bytes) {
+                        IResult::Done(_tail, (algorithm, p_integer)) => {
+                            ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
+                            Ok(ssh_key)
+                        }
+                        IResult::Error(_error) => Err("Parse error".into()),
+                        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+                    };
+                }
+            }
+            if algorithm_name.starts_with(b"ssh-dss") {
+                ssh_key.algorithm = Algorithm::Dsa(vec![]);
+                // if !ssh_key.is_encrypted {
+                //     let p_integer = read_field(&mut reader)?;
+                //     ssh_key.algorithm = Algorithm::Dsa(p_integer[1..].to_owned());
+                // }
+            }
+            if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
+                ssh_key.algorithm = Algorithm::Ecdsa(256);
+            }
+            if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
+                ssh_key.algorithm = Algorithm::Ecdsa(384);
+            }
+            if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
+                ssh_key.algorithm = Algorithm::Ecdsa(521);
+            }
+            Ok(ssh_key)
+        }
+        IResult::Error(_error) => Err("Parse error".into()),
+        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+    }
 }
 
 fn identify_openssh_v1(bytes: &[u8]) -> io::Result<SshKey> {
@@ -299,8 +390,16 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                     ssh_key.algorithm = ecdsa_private(&block.data)?;
                 }
                 "OPENSSH PRIVATE KEY" => {
-                    if block.data.starts_with(b"openssh-key-v1") {
-                        match identify_openssh_v1(&block.data) {
+                    if block.data.starts_with(b"openssh-key-v1\0") {
+                        // match identify_openssh_v1(&block.data) {
+                        //     Ok(key) => {
+                        //         ssh_key = key;
+                        //     }
+                        //     Err(error) => {
+                        //         return Err(format!("openssh-key-v1 error: {:?}", error));
+                        //     }
+                        // }
+                        match openssh_key_v1_private(&block.data) {
                             Ok(key) => {
                                 ssh_key = key;
                             }
