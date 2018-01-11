@@ -1,5 +1,4 @@
 extern crate base64;
-extern crate byteorder;
 extern crate nom_pem;
 extern crate rsfs;
 pub mod file_info;

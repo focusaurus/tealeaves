@@ -1,13 +1,8 @@
-extern crate byteorder;
 use base64;
-use byteorder::{BigEndian, ReadBytesExt};
 use file_info::{Algorithm, CertificateRequest, SshKey};
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
-use std::io;
-use std::io::Read;
-// use std::io::{ErrorKind, Read};
 use der_parser::{der_read_element_content_as, parse_der, parse_der_implicit, parse_der_integer,
                  parse_der_octetstring, DerObject, DerObjectContent, DerTag};
 use der_parser::oid::Oid;
@@ -17,10 +12,6 @@ use der_parser::der_read_element_header;
 
 // My code does not directly use these names. Why do I need to `use` them?
 use nom::{Err, ErrorKind, be_u32};
-
-fn bail(message: String) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, message)
-}
 
 fn is_encrypted(headers: &[HeaderEntry]) -> bool {
     headers.iter().any(|header| match *header {
@@ -197,9 +188,9 @@ named!(
 );
 
 named!(
-    nom_rsa_private<(&[u8])>,
+    nom_rsa<(&[u8])>,
     do_parse!(
-        cipher_name: length_bytes!(be_u32) >> _version: length_bytes!(be_u32)
+        cipher_name: length_bytes!(be_u32) >> _ver_or_exp: length_bytes!(be_u32)
             >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
     )
 );
@@ -211,54 +202,17 @@ named!(
     )
 );
 
-named!(
-    nom_rsa_public<(&[u8])>,
-    do_parse!(
-        cipher_name: length_bytes!(be_u32) >> exponent: length_bytes!(be_u32)
-            >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
-    )
-);
-
-/// Read a length-prefixed field in the format openssh uses
-/// which is a 4-byte big-endian u32 length
-/// followed by that many bytes of payload
-fn read_field<R: ReadBytesExt + Read>(reader: &mut R) -> io::Result<Vec<u8>> {
-    let len = reader.read_u32::<BigEndian>()?;
-    if len > 4096 {
-        return Err(bail("Field size too large. File possibly corrupt.".into()));
-    }
-    let mut word = vec![0u8; len as usize];
-    reader.read_exact(&mut word.as_mut_slice())?;
-    Ok(word)
-}
-
 fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_openssh_key_v1_private(bytes) {
         IResult::Done(_tail, (cipher_name, key_bytes)) => {
             let mut ssh_key: SshKey = Default::default();
-            ssh_key.algorithm = peek_algorithm(&key_bytes);
             ssh_key.is_encrypted = cipher_name != b"none";
-            if ssh_key.is_encrypted {
-                return Ok(ssh_key);
-            }
-            match ssh_key.algorithm {
-                Algorithm::Dsa(_) => match nom_dss(&key_bytes) {
-                    IResult::Done(_tail, p_integer) => {
-                        ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
-                        Ok(ssh_key)
-                    }
-                    IResult::Error(_error) => Err("Parse error".into()),
-                    IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-                },
-                Algorithm::Rsa(_) => match nom_rsa_private(&key_bytes) {
-                    IResult::Done(_tail, modulus) => {
-                        ssh_key.algorithm = Algorithm::Rsa(modulus.to_owned());
-                        Ok(ssh_key)
-                    }
-                    IResult::Error(_error) => Err("Parse error".into()),
-                    IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-                },
-                _ => Ok(ssh_key),
+            match peek_algorithm(false, &key_bytes) {
+                Ok(algorithm) => {
+                    ssh_key.algorithm = algorithm;
+                    Ok(ssh_key)
+                }
+                Err(message) => Err(message),
             }
         }
         IResult::Error(_error) => Err("Parse error".into()),
@@ -328,28 +282,44 @@ named!(
     )
 );
 
-fn peek_algorithm(key_bytes: &[u8]) -> Algorithm {
+fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, String> {
     // Skip 4-byte length indicator
     let algorithm_name = &key_bytes[4..];
     if algorithm_name.starts_with(b"ssh-ed25519") {
-        return Algorithm::Ed25519;
-    }
-    if algorithm_name.starts_with(b"ssh-dss") {
-        return Algorithm::Dsa(vec![]);
-    }
-    if algorithm_name.starts_with(b"ssh-rsa") {
-        return Algorithm::Rsa(vec![]);
+        return Ok(Algorithm::Ed25519);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
-        return Algorithm::Ecdsa(256);
+        return Ok(Algorithm::Ecdsa(256));
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
-        return Algorithm::Ecdsa(384);
+        return Ok(Algorithm::Ecdsa(384));
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
-        return Algorithm::Ecdsa(521);
+        return Ok(Algorithm::Ecdsa(521));
     }
-    Algorithm::Unknown
+    if is_encrypted {
+        if algorithm_name.starts_with(b"ssh-dss") {
+            return Ok(Algorithm::Dsa(vec![]));
+        }
+        if algorithm_name.starts_with(b"ssh-rsa") {
+            return Ok(Algorithm::Rsa(vec![]));
+        }
+    }
+    if algorithm_name.starts_with(b"ssh-dss") {
+        return match nom_dss(&key_bytes) {
+            IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    if algorithm_name.starts_with(b"ssh-rsa") {
+        return match nom_rsa(&key_bytes) {
+            IResult::Done(_tail, modulus) => Ok(Algorithm::Rsa(modulus.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    Ok(Algorithm::Unknown)
 }
 
 pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
@@ -359,29 +329,14 @@ pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
             ssh_key.is_public = true;
             ssh_key.comment = Some(String::from_utf8_lossy(comment).into_owned());
             match base64::decode(payload) {
-                Ok(key_bytes) => {
-                    ssh_key.algorithm = peek_algorithm(&key_bytes);
-                    match ssh_key.algorithm {
-                        Algorithm::Dsa(_) => match nom_dss(&key_bytes) {
-                            IResult::Done(_tail, p_integer) => {
-                                ssh_key.algorithm = Algorithm::Dsa(p_integer.to_owned());
-                                Ok(ssh_key)
-                            }
-                            IResult::Error(_error) => Err("Parse error".into()),
-                            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-                        },
-                        Algorithm::Rsa(_) => match nom_rsa_private(&key_bytes) {
-                            IResult::Done(_tail, modulus) => {
-                                ssh_key.algorithm = Algorithm::Rsa(modulus.to_owned());
-                                Ok(ssh_key)
-                            }
-                            IResult::Error(_error) => Err("Parse error".into()),
-                            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-                        },
-                        _ => Ok(ssh_key),
+                Ok(key_bytes) => match peek_algorithm(false, &key_bytes) {
+                    Ok(algorithm) => {
+                        ssh_key.algorithm = algorithm;
+                        Ok(ssh_key)
                     }
-                }
-                Err(error) => Err("Invalid Base64".into()),
+                    Err(message) => Err(message),
+                },
+                Err(_) => Err("Invalid Base64".into()),
             }
         }
         IResult::Error(_error) => Err("Parse error".into()),
