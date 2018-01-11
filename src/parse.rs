@@ -211,8 +211,8 @@ named!(
 named!(
     nom_ssh_dss<(&[u8], &[u8])>,
     do_parse!(
-        cipher_name: length_bytes!(be_u32) >> int1: length_bytes!(be_u32)
-            >> int2: length_bytes!(be_u32) >> (cipher_name, &int1[1..])
+        cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32)
+        >> (cipher_name, &p_integer[1..])
     )
 );
 
