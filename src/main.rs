@@ -4,6 +4,7 @@ extern crate rsfs;
 extern crate tealeaves;
 use clap::{App, Arg};
 use std::{env, fs, io, process};
+use std::path::PathBuf;
 
 fn tealeaves() -> io::Result<()> {
     let matches = App::new("tealeaves")
@@ -17,33 +18,35 @@ fn tealeaves() -> io::Result<()> {
         )
         .get_matches();
     let fs = rsfs::disk::FS;
-    let paths = matches.values_of("paths");
-    match paths {
-        Some(paths) => for result in paths.map(|p| tealeaves::scan(&fs, &p)) {
-            match result {
-                Ok(info) => println!("{}", info),
-                Err(message) => eprintln!("{}", message),
-            };
-        },
+    let mut paths: Vec<PathBuf> = vec![];
+    // Sigh. PathBuf does not impl FromStr
+    // https://github.com/rust-lang/rust/issues/44431
+    match matches.values_of("paths") {
+        Some(values) => {
+            paths = values.map(|v| PathBuf::from(v)).collect();
+        }
         None => {
             // If no paths on command line, scan ~/.ssh
             match env::home_dir() {
                 Some(home) => {
                     let dot_ssh = home.join(".ssh");
-                    for result in fs::read_dir(dot_ssh)?
-                        .map(|r| r.unwrap())
-                        .map(|dir_entry| tealeaves::scan(&fs, &dir_entry.path()))
-                    {
-                        match result {
-                            Ok(info) => println!("{}", info),
-                            Err(message) => eprintln!("{}", message),
-                        };
-                    }
+                    paths = fs::read_dir(dot_ssh)?
+                        .map(|dir_entry| dir_entry.unwrap().path())
+                        .collect();
                 }
                 None => eprintln!("Error determining your home directory via HOME env var"),
             }
         }
-    };
+    }
+
+    let results: Vec<Result<tealeaves::FileInfo, String>> =
+        paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
+    for result in results {
+        match result {
+            Ok(info) => println!("{}", info),
+            Err(message) => eprintln!("{}", message),
+        };
+    }
     Ok(())
 }
 

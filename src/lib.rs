@@ -3,7 +3,7 @@ extern crate nom_pem;
 extern crate rsfs;
 pub mod file_info;
 pub mod parse;
-use file_info::FileInfo;
+pub use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
@@ -75,16 +75,7 @@ pub fn scan<
         let mut file = open_result.unwrap();
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
-        if bytes.starts_with(b"ssh-ed25519 ") {
-            file_info.ssh_key = Some(parse::public_key(&bytes)?);
-        }
-        if bytes.starts_with(b"ssh-rsa ") {
-            file_info.ssh_key = Some(parse::public_key(&bytes)?);
-        }
-        if bytes.starts_with(b"ssh-dss ") {
-            file_info.ssh_key = Some(parse::public_key(&bytes)?);
-        }
-        if bytes.starts_with(b"ecdsa-sha2-nistp") {
+        if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
             file_info.ssh_key = Some(parse::public_key(&bytes)?);
         }
         if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
