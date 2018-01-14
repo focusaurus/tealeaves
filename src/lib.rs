@@ -3,7 +3,7 @@ extern crate nom_pem;
 extern crate rsfs;
 pub mod file_info;
 pub mod parse;
-pub use file_info::{FileInfo, FileInfo3};
+pub use file_info::FileInfo3;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;

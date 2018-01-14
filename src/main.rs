@@ -5,7 +5,7 @@ extern crate tealeaves;
 use clap::{App, Arg};
 use std::{env, fs, io, process};
 use std::path::PathBuf;
-use tealeaves::file_info::{Algorithm, FileInfo, FileInfo3, FileType};
+use tealeaves::file_info::FileInfo3;
 
 fn tealeaves3() -> io::Result<()> {
     let matches = App::new("tealeaves")
