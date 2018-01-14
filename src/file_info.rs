@@ -81,6 +81,57 @@ impl SshKey {
             point: None,
         }
     }
+
+    pub fn is_pair(&self, other: &SshKey) -> bool {
+        if self.is_public == other.is_public {
+            return false;
+        }
+        match self.algorithm {
+            Algorithm::Rsa(ref modulus) => match other.algorithm {
+                Algorithm::Rsa(ref modulus2) => modulus == modulus2,
+                _ => false,
+            },
+            Algorithm::Dsa(ref p_integer) => match other.algorithm {
+                Algorithm::Dsa(ref p_integer2) => p_integer == p_integer2,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+}
+
+#[test]
+fn test_is_pair() {
+    let mut priv1: SshKey = Default::default();
+    priv1.algorithm = Algorithm::Rsa(vec![1, 2, 3]);
+    assert!(!priv1.is_pair(&priv1));
+    let mut pub1: SshKey = Default::default();
+    pub1.is_public = true;
+    pub1.algorithm = Algorithm::Rsa(vec![1, 2, 3]);
+    assert!(priv1.is_pair(&pub1));
+    assert!(pub1.is_pair(&priv1));
+    let mut pub2: SshKey = Default::default();
+    pub2.is_public = true;
+    pub2.algorithm = Algorithm::Dsa(vec![1, 2, 3]);
+    assert!(!pub2.is_pair(&priv1));
+    let mut pub3: SshKey = Default::default();
+    pub3.is_public = true;
+    pub3.algorithm = Algorithm::Rsa(vec![4, 5, 6]);
+    assert!(!pub3.is_pair(&priv1));
+    assert!(!priv1.is_pair(&pub3));
+    let mut priv2: SshKey = Default::default();
+    priv2.algorithm = Algorithm::Dsa(vec![4, 5, 6]);
+    assert!(!priv2.is_pair(&priv2));
+    assert!(!priv2.is_pair(&pub1));
+    assert!(!priv2.is_pair(&priv1));
+
+    let mut pub4: SshKey = Default::default();
+    pub4.is_public = true;
+    pub4.algorithm = Algorithm::Dsa(vec![4, 5, 6]);
+    assert!(pub4.is_pair(&priv2));
+    assert!(priv2.is_pair(&pub4));
+    assert!(!pub4.is_pair(&priv1));
+
 }
 
 fn bit_count(field: &Vec<u8>) -> usize {
@@ -159,6 +210,12 @@ impl FileInfo {
             ssh_key: None,
             file_type: FileType::Unknown,
         }
+    }
+}
+
+impl Default for FileInfo {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
