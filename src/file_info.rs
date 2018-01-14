@@ -29,6 +29,19 @@ impl fmt::Display for Algorithm {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum FileType {
+    Unknown,
+    Directory,
+    EmptyFile,
+    SmallFile,
+    MediumFile,
+    LargeFile,
+    PrivateSshKey,
+    PublicSshKey,
+    TlsCertificate,
+}
+
 #[derive(Debug)]
 pub struct CertificateRequest {
     pub is_encrypted: bool,
@@ -127,6 +140,7 @@ pub struct FileInfo {
     pub certificate_request: Option<CertificateRequest>,
     pub path_buf: path::PathBuf,
     pub error: Option<String>,
+    pub file_type: FileType,
 }
 
 impl FileInfo {
@@ -143,6 +157,7 @@ impl FileInfo {
             pem_tag: "".into(),
             certificate_request: None,
             ssh_key: None,
+            file_type: FileType::Unknown,
         }
     }
 }

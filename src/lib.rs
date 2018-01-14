@@ -54,16 +54,19 @@ pub fn scan<
         match meta.len() {
             0...50 => {
                 file_info.size = file_info::Size::Small;
+                file_info.file_type = file_info::FileType::SmallFile;
             }
             51...4096 => {
                 file_info.size = file_info::Size::Medium;
+                file_info.file_type = file_info::FileType::MediumFile;
             }
             _ => {
                 file_info.size = file_info::Size::Large;
+                file_info.file_type = file_info::FileType::LargeFile;
             }
         }
     }
-    if file_info.size == file_info::Size::Medium {
+    if file_info.file_type == file_info::FileType::MediumFile {
         let open_result = fs.open_file(path);
         if open_result.is_err() {
             return Err(format!(
@@ -77,8 +80,10 @@ pub fn scan<
         file.read_to_end(&mut bytes).unwrap();
         if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
             file_info.ssh_key = Some(parse::public_key(&bytes)?);
+            file_info.file_type = file_info::FileType::PublicSshKey;
         }
         if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
+            // TODO set file_info.file_type
             match parse::certificate_request(&bytes) {
                 Ok(req) => file_info.certificate_request = Some(req),
                 Err(message) => file_info.error = Some(message),
@@ -88,6 +93,7 @@ pub fn scan<
             }
         }
         if bytes.starts_with(b"-----BEGIN ") {
+            file_info.file_type = file_info::FileType::PrivateSshKey;
             match parse::private_key(&bytes) {
                 Ok(key) => file_info.ssh_key = Some(key),
                 Err(message) => file_info.error = Some(message),
