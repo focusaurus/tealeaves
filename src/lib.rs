@@ -156,7 +156,10 @@ pub fn scan3<
             let mut bytes = vec![];
             file.read_to_end(&mut bytes).unwrap();
             if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
-                return Ok(file_info::FileInfo3::SshKey(path_buf, parse::public_key(&bytes)?));
+                return match parse::public_key(&bytes) {
+                    Ok(key) => Ok(file_info::FileInfo3::SshKey(path_buf, key)),
+                    Err(error) => Ok(file_info::FileInfo3::Error(path_buf, error)),
+                };
             }
             if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
                 return Ok(file_info::FileInfo3::TlsCertificate(path_buf));

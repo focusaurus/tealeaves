@@ -32,6 +32,7 @@ impl fmt::Display for Algorithm {
 #[derive(Debug)]
 pub enum FileInfo3 {
     Unknown(path::PathBuf),
+    Error(path::PathBuf, String),
     Directory(path::PathBuf),
     UnreadableFile(path::PathBuf),
     EmptyFile(path::PathBuf),
@@ -81,7 +82,6 @@ impl fmt::Display for FileInfo3 {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str(&format!("\n\t✓ {}", key));
 
-
                 match key.algorithm {
                     Algorithm::Rsa(ref modulus) => {
                         if !key.is_encrypted && modulus.len() < (2048 / 8) {
@@ -102,6 +102,9 @@ impl fmt::Display for FileInfo3 {
                 // }
             }
             FileInfo3::TlsCertificate(ref _path_buf) => output.push_str("\t⚠️ TLS certificate"),
+            FileInfo3::Error(ref _path_buf, ref message) => {
+                output.push_str(&format!("\t🚨 Error: {}", message))
+            }
         };
         write!(
             out,
