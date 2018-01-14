@@ -133,7 +133,6 @@ fn high_size_gets_error() {
 }
 
 #[test]
-#[ignore]
 fn pem_long_field_gets_detected() {
     let fs = memfs();
     let mut pem = fs.create_file("/tmp/pem-too-long-field").unwrap();
@@ -149,15 +148,10 @@ fn pem_long_field_gets_detected() {
     pem.write_all(b"-----END OPENSSH PRIVATE KEY-----\n")
         .unwrap();
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
-    assert!(result.is_ok());
-    match result.unwrap() {
-        FileInfo::Error(_, _) => (),
-        _ => panic!("Expected Error"),
-    }
+    assert!(result.is_err());
 }
 
 #[test]
-#[ignore]
 fn asn1_error_gets_detected() {
     let fs = memfs();
     let mut pem = fs.create_file("/tmp/pem").unwrap();
@@ -175,10 +169,7 @@ fn asn1_error_gets_detected() {
         pem.write_all(b"-----END ").unwrap();
         pem.write_all(tag.as_bytes()).unwrap();
         pem.write_all(b" PRIVATE KEY-----\n").unwrap();
-        let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
-        match file_info {
-            FileInfo::Error(_, _) => (),
-            _ => panic!("Expected Error"),
-        }
+        let result = tealeaves::scan(&fs, &"/tmp/pem");
+        assert!(result.is_err());
     }
 }
