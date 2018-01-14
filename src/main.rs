@@ -42,10 +42,8 @@ fn tealeaves3() -> io::Result<()> {
 
     let results: Vec<Result<tealeaves::FileInfo, String>> =
         paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
-    let (errors, oks): (
-        Vec<Result<FileInfo, String>>,
-        Vec<Result<FileInfo, String>>,
-    ) = results.into_iter().partition(|r| r.is_err());
+    let (errors, oks): (Vec<Result<FileInfo, String>>, Vec<Result<FileInfo, String>>) =
+        results.into_iter().partition(|r| r.is_err());
     for result_error in errors {
         match result_error {
             Err(message) => eprintln!("{}", message),
@@ -66,19 +64,28 @@ fn tealeaves3() -> io::Result<()> {
     //     })
     //     .collect();
     // println!("publics {}", publics.len());
+    // TODO need to print out the public keys
+    // for public_key in publics.clone() {
+    //     println!("{}", public_key);
+    // }
     for info in others {
         match info {
             FileInfo::SshKey(ref _pb, ref key) => {
+                print!("{}", info);
                 if !key.is_public {
                     let pair = publics.iter().find(|pub_info| match *pub_info {
                         &FileInfo::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
                         _ => false,
                     });
                     match pair {
-                        Some(pub_key) => println!("pair {}", pub_key),
-                        _ => (),
+                        Some(pub_key) => match *pub_key {
+                            FileInfo::SshKey(ref path, _) => {
+                                println!("\tpairs with public key at: {}\n", path.display());
+                            }
+                            _ => println!("\n"),
+                        },
+                        _ => println!(""),
                     }
-                    println!("{}", info);
                 }
             }
             _ => println!("{}", info),

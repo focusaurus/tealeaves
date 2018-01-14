@@ -1,14 +1,6 @@
 use std::{fmt, path};
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum Size {
-    Unknown,
-    Small,
-    Medium,
-    Large,
-}
-
-#[derive(PartialEq, Eq, Debug)]
 pub enum Algorithm {
     Unknown,
     Ed25519,
@@ -106,27 +98,8 @@ impl fmt::Display for FileInfo {
                 output.push_str(&format!("\t🚨 Error: {}", message))
             }
         };
-        write!(
-            out,
-            "{}\n",
-            // TODO print the path somehow
-            // self.path_buf.to_str().unwrap_or("/"),
-            output
-        )
+        write!(out, "{}\n", output)
     }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub enum FileType {
-    Unknown,
-    Directory,
-    EmptyFile,
-    SmallFile,
-    MediumFile,
-    LargeFile,
-    PublicSshKey,
-    PrivateSshKey,
-    TlsCertificate,
 }
 
 #[derive(Debug)]
@@ -266,7 +239,7 @@ impl Default for SshKey {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use super::{FileInfo,SshKey,Algorithm};
+    use super::{Algorithm, FileInfo, SshKey};
 
     #[test]
     fn test_file_info_display_encrypted_ed25519() {
