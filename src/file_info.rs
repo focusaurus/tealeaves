@@ -31,7 +31,7 @@ impl fmt::Display for Algorithm {
 
 #[derive(Debug)]
 pub enum FileInfo3 {
-    Unknown,
+    Unknown(path::PathBuf),
     Directory(path::PathBuf),
     UnreadableFile(path::PathBuf),
     EmptyFile(path::PathBuf),
@@ -40,6 +40,60 @@ pub enum FileInfo3 {
     LargeFile(path::PathBuf),
     SshKey(SshKey),
     TlsCertificate(path::PathBuf),
+}
+
+impl fmt::Display for FileInfo3 {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::new();
+        match *self {
+            FileInfo3::Unknown(ref _path_buf) => output.push_str("\t⚠️ unrecognized file"),
+            FileInfo3::Directory(ref _path_buf) => output.push_str("\t✓ is a directory"),
+            FileInfo3::UnreadableFile(ref _path_buf) => {
+                output.push_str("\t🔥 missing read permission")
+            }
+            FileInfo3::EmptyFile(ref _path_buf) => {
+                output.push_str("\t⚠️ unrecognized small file")
+            }
+            FileInfo3::SmallFile(ref _path_buf) => {
+                output.push_str("\t⚠️ unrecognized small file")
+            }
+            FileInfo3::MediumFile(ref _path_buf) => {
+                output.push_str("\t⚠️ unrecognized medium file")
+            }
+            FileInfo3::LargeFile(ref _path_buf) => {
+                output.push_str("\t⚠️ unrecognized large file")
+            }
+            FileInfo3::SshKey(ref key) => {
+                output.push_str(&format!("\t✓ {}", key));
+                match key.algorithm {
+                    Algorithm::Rsa(ref modulus) => {
+                        if !key.is_encrypted && modulus.len() < (2048 / 8) {
+                            output.push_str("\n\t⚠️ RSA keys should be 2048 bits or larger");
+                        }
+                    }
+                    Algorithm::Dsa(_) => {
+                        output.push_str("\n\t⚠️ dsa keys are considered insecure");
+                    }
+                    Algorithm::Ecdsa(_) => {
+                        output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
+                    }
+                    _ => (),
+                }
+                // TODO figure out how to handle this
+                // if !key.is_public && self.mode.unwrap_or(0o000) & 0o077 != 0o000 {
+                //     output.push_str("\n\t⚠️ insecure permissions");
+                // }
+            }
+            FileInfo3::TlsCertificate(ref _path_buf) => output.push_str("\t⚠️ TLS certificate"),
+        };
+        write!(
+            out,
+            "{}\n",
+            // TODO print the path somehow
+            // self.path_buf.to_str().unwrap_or("/"),
+            output
+        )
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
