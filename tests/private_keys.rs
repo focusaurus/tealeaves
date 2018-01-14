@@ -92,7 +92,10 @@ fn ed25519_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ed25519);
+            match ssh_key.algorithm {
+                Algorithm::Ed25519(point) => assert_eq!(point.len(), 32),
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);
@@ -110,7 +113,7 @@ fn ed25519_private_passphrase() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ed25519);
+            assert_eq!(ssh_key.algorithm, Algorithm::Ed25519(vec![]));
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, true);
             assert_eq!(ssh_key.comment, None);

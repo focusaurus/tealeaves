@@ -3,7 +3,7 @@ use std::{fmt, path};
 #[derive(PartialEq, Eq, Debug)]
 pub enum Algorithm {
     Unknown,
-    Ed25519,
+    Ed25519(Vec<u8>),
     Rsa(Vec<u8>),
     Ecdsa(usize),
     Dsa(Vec<u8>),
@@ -12,7 +12,7 @@ pub enum Algorithm {
 impl fmt::Display for Algorithm {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Algorithm::Ed25519 => write!(out, "ed25519"),
+            &Algorithm::Ed25519(_) => write!(out, "ed25519"),
             &Algorithm::Rsa(_) => write!(out, "rsa"),
             &Algorithm::Ecdsa(curve) => write!(out, "ecdsa, curve p{}", curve),
             &Algorithm::Dsa(_) => write!(out, "dsa"),
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn test_file_info_display_encrypted_ed25519() {
         let mut ssh_key: SshKey = Default::default();
-        ssh_key.algorithm = Algorithm::Ed25519;
+        ssh_key.algorithm = Algorithm::Ed25519(vec![]);
         ssh_key.is_public = false;
         ssh_key.is_encrypted = true;
         let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);

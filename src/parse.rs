@@ -188,6 +188,13 @@ named!(
 );
 
 named!(
+    nom_ed25519<(&[u8])>,
+    do_parse!(
+        cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (&point)
+    )
+);
+
+named!(
     nom_rsa<(&[u8])>,
     do_parse!(
         cipher_name: length_bytes!(be_u32) >> _ver_or_exp: length_bytes!(be_u32)
@@ -286,31 +293,33 @@ fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, Str
     if key_bytes.len() < 4 {
         return Err("Too short to be a valid ssh key".into());
     }
+    let mut algorithm = Algorithm::Unknown;
     // Skip 4-byte length indicator
     let algorithm_name = &key_bytes[4..];
     if algorithm_name.starts_with(b"ssh-ed25519") {
-        return Ok(Algorithm::Ed25519);
+        algorithm = Algorithm::Ed25519(vec![]);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
-        return Ok(Algorithm::Ecdsa(256));
+        algorithm = Algorithm::Ecdsa(256);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
-        return Ok(Algorithm::Ecdsa(384));
+        algorithm = Algorithm::Ecdsa(384);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
-        return Ok(Algorithm::Ecdsa(521));
-    }
-    if is_encrypted {
-        if algorithm_name.starts_with(b"ssh-dss") {
-            return Ok(Algorithm::Dsa(vec![]));
-        }
-        if algorithm_name.starts_with(b"ssh-rsa") {
-            return Ok(Algorithm::Rsa(vec![]));
-        }
+        algorithm = Algorithm::Ecdsa(521);
     }
     if algorithm_name.starts_with(b"ssh-dss") {
-        return match nom_dss(&key_bytes) {
-            IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
+        algorithm = Algorithm::Dsa(vec![]);
+    }
+    if algorithm_name.starts_with(b"ssh-rsa") {
+        algorithm = Algorithm::Rsa(vec![]);
+    }
+    if is_encrypted {
+        return Ok(algorithm);
+    }
+    if algorithm_name.starts_with(b"ssh-ed25519") {
+        return match nom_ed25519(&key_bytes) {
+            IResult::Done(_tail, point) => Ok(Algorithm::Ed25519(point.to_owned())),
             IResult::Error(_error) => Err("Parse error".into()),
             IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
         };
@@ -322,7 +331,14 @@ fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, Str
             IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
         };
     }
-    Ok(Algorithm::Unknown)
+    if algorithm_name.starts_with(b"ssh-dss") {
+        return match nom_dss(&key_bytes) {
+            IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    Ok(algorithm)
 }
 
 pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
@@ -339,7 +355,7 @@ pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
                     }
                     Err(message) => Err(message),
                 },
-                Err(e) => Err("Invalid Base64".into()),
+                Err(_) => Err("Invalid Base64".into()),
             }
         }
         IResult::Error(_error) => Err("Parse error".into()),
