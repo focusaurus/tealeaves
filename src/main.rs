@@ -5,6 +5,7 @@ extern crate tealeaves;
 use clap::{App, Arg};
 use std::{env, fs, io, process};
 use std::path::PathBuf;
+use tealeaves::file_info::Algorithm;
 
 fn tealeaves() -> io::Result<()> {
     let matches = App::new("tealeaves")
@@ -41,11 +42,58 @@ fn tealeaves() -> io::Result<()> {
 
     let results: Vec<Result<tealeaves::FileInfo, String>> =
         paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
+        //.partition(|r|r.is_err());
+
+    // let (infos, errors) = results.
+    // let keys = results.iter().filter(|r| match *r {
+    //     &Ok(ref f) => f.ssh_key.is_some(),
+    //     &Err(_) => false,
+    // }).map(||
+    // let private_keys = keys.map(|r| r.unwrap().ssh_key.unwrap()).filter(|k|!k.is_public);
+    // r.is_ok() && r.unwrap().ssh_key.is_some() && !r.unwrap().ssh_key.unwrap().is_public
+    // }) {
+    // .filter(|r|r.unwrap().ssh_key.is_some()).filter(|rf.ssh_key.unwrap()).filter(|s|!s.is_public) {
+    // }
+    let mut privates = vec![];
+    let mut publics = vec![];
     for result in results {
         match result {
-            Ok(info) => println!("{}", info),
+            Ok(info) => {
+                println!("{}", info);
+                match info.ssh_key {
+                    Some(ref key) => {
+                        if key.is_public {
+                            publics.push(&info);
+                        } else {
+                            privates.push(&info);
+                        }
+                    },
+                    None => ()
+                }
+                // if info.ssh_key.is_some() && !info.ssh_key.unwrap().is_public {
+                //     println!("PRIVATE {}", info.ssh_key.unwrap());
+                // }
+            }
             Err(message) => eprintln!("{}", message),
         };
+    }
+    for private_info in privates {
+        match (*private_info).ssh_key.unwrap().algorithm {
+            Algorithm::Rsa(private_modulus) => {
+                for public_info in publics {
+                    match public_info.ssh_key.unwrap().algorithm {
+                        Algorithm::Rsa(public_modulus) => {
+                            if private_modulus == public_modulus {
+                                println!("match {} {}", private_info.path_buf.display(), public_info.path_buf.display());
+                            }
+                        },
+                        _ => ()
+                    }
+                }
+                println!("RSA");
+            }
+            _ => {}
+        }
     }
     Ok(())
 }
