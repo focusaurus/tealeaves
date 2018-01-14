@@ -18,7 +18,7 @@ fn memfs() -> FS {
 fn empty_file_gets_error() {
     let fs = memfs();
     let _empty = fs.create_file("/tmp/empty");
-    let file_info = tealeaves::scan3(&fs, &"/tmp/empty").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/empty").unwrap();
     match file_info {
         FileInfo3::EmptyFile(_) => (),
         _ => panic!("expected EmptyFile"),
@@ -33,7 +33,7 @@ fn unreadable_file_gets_error() {
     for &mode in &[0o000, 0o002, 0o020, 0o200, 0o222] {
         fs.set_permissions("/tmp/unreadable", Permissions::from_mode(mode))
             .unwrap();
-        let file_info = tealeaves::scan3(&fs, &"/tmp/unreadable").unwrap();
+        let file_info = tealeaves::scan(&fs, &"/tmp/unreadable").unwrap();
         match file_info {
             FileInfo3::UnreadableFile(_) => (),
             _ => panic!("Expected Unreadable"),
@@ -49,7 +49,7 @@ fn readable_file_gets_no_error() {
     for &mode in &[0o004, 0o004, 0o040, 0o400, 0o444] {
         fs.set_permissions("/tmp/readable", Permissions::from_mode(mode))
             .unwrap();
-        let file_info = tealeaves::scan3(&fs, &"/tmp/readable").unwrap();
+        let file_info = tealeaves::scan(&fs, &"/tmp/readable").unwrap();
         match file_info {
             FileInfo3::SmallFile(_) => (),
             _ => panic!("Expected SmallFile"),
@@ -62,7 +62,7 @@ fn low_size_gets_error() {
     let fs = memfs();
     let mut small = fs.create_file("/tmp/small").unwrap();
     small.write_all(&[1, 2, 3, 4]).unwrap();
-    let file_info = tealeaves::scan3(&fs, &"/tmp/small").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
     match file_info {
         FileInfo3::SmallFile(_) => (),
         _ => panic!("Expected SmallFile"),
@@ -75,7 +75,7 @@ fn prefix_then_bogus_gets_error() {
     let mut file = fs.create_file("/tmp/prefix_then_bogus").unwrap();
     file.write_all(b"ssh-rsa is a cool kind of file 1111111111 2222222222")
         .unwrap();
-    let file_info = tealeaves::scan3(&fs, &"/tmp/prefix_then_bogus").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/prefix_then_bogus").unwrap();
     match file_info {
         FileInfo3::Error(_, _) => (),
         _ => panic!("Expected Error"),
@@ -89,7 +89,7 @@ fn not_pem_gets_detected() {
     not_pem
         .write_all(b"Hi this is not even a PEM file or anything, but it's long enough to maybe")
         .unwrap();
-    let file_info = tealeaves::scan3(&fs, &"/tmp/not_pem").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
     match file_info {
         FileInfo3::MediumFile(_) => (),
         _ => panic!("Expected MediumFile"),
@@ -111,7 +111,7 @@ MEBQY=
 -----END OPENSSH PRIVATE KEY-----
 ",
     ).unwrap();
-    let file_info = tealeaves::scan3(&fs, &"/tmp/pem").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
     match file_info {
         FileInfo3::SshKey(_, _) => (),
         _ => panic!("Expected SshKey"),
@@ -125,7 +125,7 @@ fn high_size_gets_error() {
     for _x in 0..1024 {
         big.write_all(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
     }
-    let file_info = tealeaves::scan3(&fs, &"/tmp/big").unwrap();
+    let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
     match file_info {
         FileInfo3::LargeFile(_) => (),
         _ => panic!("Expected LargeFile"),
@@ -148,7 +148,7 @@ fn pem_long_field_gets_detected() {
     pem.write_all(b"\n").unwrap();
     pem.write_all(b"-----END OPENSSH PRIVATE KEY-----\n")
         .unwrap();
-    let result = tealeaves::scan3(&fs, &"/tmp/pem-too-long-field");
+    let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_ok());
     match result.unwrap() {
         FileInfo3::Error(_, _) => (),
@@ -174,7 +174,7 @@ fn asn1_error_gets_detected() {
         pem.write_all(b"-----END ").unwrap();
         pem.write_all(tag.as_bytes()).unwrap();
         pem.write_all(b" PRIVATE KEY-----\n").unwrap();
-        let file_info = tealeaves::scan3(&fs, &"/tmp/pem").unwrap();
+        let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
         match file_info {
             FileInfo3::Error(_, _) => (),
             _=>panic!("Expected Error")

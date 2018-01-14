@@ -41,7 +41,7 @@ fn tealeaves3() -> io::Result<()> {
     }
 
     let results: Vec<Result<tealeaves::FileInfo3, String>> =
-        paths.iter().map(|p| tealeaves::scan3(&fs, &p)).collect();
+        paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
     let (errors, oks): (
         Vec<Result<FileInfo3, String>>,
         Vec<Result<FileInfo3, String>>,
