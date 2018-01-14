@@ -38,7 +38,7 @@ pub enum FileInfo3 {
     SmallFile(path::PathBuf),
     MediumFile(path::PathBuf),
     LargeFile(path::PathBuf),
-    SshKey(SshKey),
+    SshKey(path::PathBuf, SshKey),
     TlsCertificate(path::PathBuf),
 }
 
@@ -46,25 +46,42 @@ impl fmt::Display for FileInfo3 {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         match *self {
-            FileInfo3::Unknown(ref _path_buf) => output.push_str("\t⚠️ unrecognized file"),
-            FileInfo3::Directory(ref _path_buf) => output.push_str("\t✓ is a directory"),
-            FileInfo3::UnreadableFile(ref _path_buf) => {
-                output.push_str("\t🔥 missing read permission")
+            FileInfo3::Unknown(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+                output.push_str("\n\t⚠️ unrecognized file");
             }
-            FileInfo3::EmptyFile(ref _path_buf) => {
-                output.push_str("\t⚠️ unrecognized small file")
+            FileInfo3::Directory(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+                output.push_str("\n\t✓ is a directory");
             }
-            FileInfo3::SmallFile(ref _path_buf) => {
-                output.push_str("\t⚠️ unrecognized small file")
+            FileInfo3::UnreadableFile(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+
+                output.push_str("\n\t🔥 missing read permission");
             }
-            FileInfo3::MediumFile(ref _path_buf) => {
-                output.push_str("\t⚠️ unrecognized medium file")
+            FileInfo3::EmptyFile(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+                output.push_str("\n\t⚠️ empty file");
             }
-            FileInfo3::LargeFile(ref _path_buf) => {
-                output.push_str("\t⚠️ unrecognized large file")
+            FileInfo3::SmallFile(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+
+                output.push_str("\n\t⚠️ unrecognized small file")
             }
-            FileInfo3::SshKey(ref key) => {
-                output.push_str(&format!("\t✓ {}", key));
+            FileInfo3::MediumFile(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+
+                output.push_str("\n\t⚠️ unrecognized medium file")
+            }
+            FileInfo3::LargeFile(ref path_buf) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+                output.push_str("\n\t⚠️ unrecognized large file")
+            }
+            FileInfo3::SshKey(ref path_buf, ref key) => {
+                output.push_str(path_buf.to_str().unwrap_or("/"));
+                output.push_str(&format!("\n\t✓ {}", key));
+
+
                 match key.algorithm {
                     Algorithm::Rsa(ref modulus) => {
                         if !key.is_encrypted && modulus.len() < (2048 / 8) {
@@ -130,7 +147,6 @@ impl Default for CertificateRequest {
 
 #[derive(Debug)]
 pub struct SshKey {
-    // pub algorithm: Option<String>,
     pub algorithm: Algorithm,
     pub comment: Option<String>,
     pub is_encrypted: bool,

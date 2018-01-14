@@ -215,7 +215,7 @@ fn tealeaves3() -> io::Result<()> {
     let infos: Vec<FileInfo3> = oks.into_iter().map(|r| r.unwrap()).collect();
     let (publics, others): (Vec<FileInfo3>, Vec<FileInfo3>) =
         infos.into_iter().partition(|i| match i {
-            &FileInfo3::SshKey(ref key) => key.is_public,
+            &FileInfo3::SshKey(ref _pb, ref key) => key.is_public,
             _ => false,
         });
     // let publics: Vec<&FileInfo3> = infos
@@ -225,13 +225,13 @@ fn tealeaves3() -> io::Result<()> {
     //         _ => false,
     //     })
     //     .collect();
-    println!("publics {}", publics.len());
+    // println!("publics {}", publics.len());
     for info in others {
         match info {
-            FileInfo3::SshKey(ref key) => {
+            FileInfo3::SshKey(ref _pb, ref key) => {
                 if !key.is_public {
                     let pair = publics.iter().find(|pub_info| match *pub_info {
-                        &FileInfo3::SshKey(ref pub_key) => pub_key.is_pair(&key),
+                        &FileInfo3::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
                         _ => false,
                     });
                     match pair {

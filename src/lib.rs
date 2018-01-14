@@ -54,7 +54,7 @@ pub fn scan<
         match meta.len() {
             0...50 => {
                 file_info.size = file_info::Size::Small;
-                file_info.file_type = file_info::FileType::SmallFile;
+                file_info.file_type = file_info::FileType::EmptyFile;
             }
             51...4096 => {
                 file_info.size = file_info::Size::Medium;
@@ -132,11 +132,15 @@ pub fn scan3<
     if !meta.is_file() {
         return Ok(file_info::FileInfo3::Unknown(path_buf));
     }
+    if meta.is_empty() {
+        return Ok(file_info::FileInfo3::EmptyFile(path_buf));
+    }
     let mode = meta.permissions().mode();
     // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
     if mode & 0o444 == 0 {
         return Ok(file_info::FileInfo3::UnreadableFile(path_buf));
     }
+
     match meta.len() {
         0...50 => Ok(file_info::FileInfo3::SmallFile(path_buf)),
         51...4096 => {
@@ -152,7 +156,7 @@ pub fn scan3<
             let mut bytes = vec![];
             file.read_to_end(&mut bytes).unwrap();
             if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
-                return Ok(file_info::FileInfo3::SshKey(parse::public_key(&bytes)?));
+                return Ok(file_info::FileInfo3::SshKey(path_buf, parse::public_key(&bytes)?));
             }
             if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
                 return Ok(file_info::FileInfo3::TlsCertificate(path_buf));
@@ -168,7 +172,7 @@ pub fn scan3<
             if bytes.starts_with(b"-----BEGIN ") {
                 match parse::private_key(&bytes) {
                     Ok(key) => {
-                        return Ok(file_info::FileInfo3::SshKey(key));
+                        return Ok(file_info::FileInfo3::SshKey(path_buf, key));
                     }
                     Err(message) => {
                         return Err(message);
