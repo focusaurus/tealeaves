@@ -70,7 +70,6 @@ fn low_size_gets_error() {
 }
 
 #[test]
-#[ignore]
 fn prefix_then_bogus_gets_error() {
     let fs = memfs();
     let mut file = fs.create_file("/tmp/prefix_then_bogus").unwrap();

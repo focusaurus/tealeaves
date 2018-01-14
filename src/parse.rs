@@ -283,6 +283,9 @@ named!(
 );
 
 fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, String> {
+    if key_bytes.len() < 4 {
+        return Err("Too short to be a valid ssh key".into());
+    }
     // Skip 4-byte length indicator
     let algorithm_name = &key_bytes[4..];
     if algorithm_name.starts_with(b"ssh-ed25519") {
@@ -336,7 +339,7 @@ pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
                     }
                     Err(message) => Err(message),
                 },
-                Err(_) => Err("Invalid Base64".into()),
+                Err(e) => Err("Invalid Base64".into()),
             }
         }
         IResult::Error(_error) => Err("Parse error".into()),
