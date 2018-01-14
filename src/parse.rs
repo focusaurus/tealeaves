@@ -207,7 +207,7 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
         IResult::Done(_tail, (cipher_name, key_bytes)) => {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_encrypted = cipher_name != b"none";
-            match peek_algorithm(false, &key_bytes) {
+            match peek_algorithm(ssh_key.is_encrypted, &key_bytes) {
                 Ok(algorithm) => {
                     ssh_key.algorithm = algorithm;
                     Ok(ssh_key)
