@@ -3,7 +3,7 @@ extern crate nom_pem;
 extern crate rsfs;
 pub mod file_info;
 pub mod parse;
-pub use file_info::FileInfo;
+pub use file_info::{FileInfo, FileInfo3};
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
@@ -104,4 +104,98 @@ pub fn scan<
         }
     }
     Ok(file_info)
+}
+
+pub fn scan3<
+    P: Permissions + PermissionsExt,
+    M: Metadata<Permissions = P>,
+    F: GenFS<Permissions = P, Metadata = M>,
+>(
+    fs: &F,
+    path: &AsRef<Path>,
+) -> Result<FileInfo3, String> {
+    let mut path_buf = PathBuf::new();
+    path_buf.push(path);
+    let res = fs.metadata(path);
+    // Todo match here instead of is_err
+    if res.is_err() {
+        return Err(format!(
+            "Error reading {}: {}",
+            path.as_ref().display(),
+            res.err().unwrap()
+        ));
+    }
+    let meta = res.unwrap();
+    if meta.is_dir() {
+        return Ok(file_info::FileInfo3::Directory(path_buf));
+    }
+    if meta.is_file() {
+        let mode = meta.permissions().mode();
+        // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
+        if mode & 0o444 == 0 {
+            return Ok(file_info::FileInfo3::UnreadableFile(path_buf));
+        } else {
+            match meta.len() {
+                0...50 => {
+                    return Ok(file_info::FileInfo3::SmallFile(path_buf));
+                }
+                51...4096 => {
+                    let open_result = fs.open_file(path);
+                    if open_result.is_err() {
+                        return Err(format!(
+                            "Error opening {}: {}",
+                            path.as_ref().display(),
+                            open_result.err().unwrap()
+                        ));
+                    }
+                    let mut file = open_result.unwrap();
+                    let mut bytes = vec![];
+                    file.read_to_end(&mut bytes).unwrap();
+                    if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
+                        return Ok(file_info::FileInfo3::SshKey(parse::public_key(&bytes)?));
+                    }
+                    if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
+                        return Ok(file_info::FileInfo3::TlsCertificate(path_buf));
+                        // TODO parse it
+                        // match parse::certificate_request(&bytes) {
+                        //     Ok(req) => file_info.certificate_request = Some(req),
+                        //     Err(message) => file_info.error = Some(message),
+                        // }
+                        // if file_info.certificate_request.is_some() {
+                        //     file_info.is_pem = true;
+                        // }
+                    }
+                    if bytes.starts_with(b"-----BEGIN ") {
+                        match parse::private_key(&bytes) {
+                            Ok(key) => {
+                                return Ok(file_info::FileInfo3::SshKey(key));
+                            },
+                            Err(message) => {
+                                return Err(message);
+                            }
+                        }
+                    }
+
+                    return Ok(file_info::FileInfo3::SmallFile(path_buf));
+                }
+                _ => {
+                    return Ok(file_info::FileInfo3::LargeFile(path_buf));
+                }
+            }
+        };
+    }
+    // if file_info.file_type == file_info::FileType::MediumFile {
+    //     let open_result = fs.open_file(path);
+    //     if open_result.is_err() {
+    //         return Err(format!(
+    //             "Error opening {}: {}",
+    //             path.as_ref().display(),
+    //             open_result.err().unwrap()
+    //         ));
+    //     }
+    //     let mut file = open_result.unwrap();
+    //     let mut bytes = vec![];
+    //     file.read_to_end(&mut bytes).unwrap();
+    // }
+    Ok(FileInfo3::Unknown)
 }

@@ -29,6 +29,19 @@ impl fmt::Display for Algorithm {
     }
 }
 
+#[derive(Debug)]
+pub enum FileInfo3 {
+    Unknown,
+    Directory(path::PathBuf),
+    UnreadableFile(path::PathBuf),
+    EmptyFile(path::PathBuf),
+    SmallFile(path::PathBuf),
+    MediumFile(path::PathBuf),
+    LargeFile(path::PathBuf),
+    SshKey(SshKey),
+    TlsCertificate(path::PathBuf),
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum FileType {
     Unknown,
@@ -37,8 +50,8 @@ pub enum FileType {
     SmallFile,
     MediumFile,
     LargeFile,
-    PrivateSshKey,
     PublicSshKey,
+    PrivateSshKey,
     TlsCertificate,
 }
 
@@ -131,7 +144,6 @@ fn test_is_pair() {
     assert!(pub4.is_pair(&priv2));
     assert!(priv2.is_pair(&pub4));
     assert!(!pub4.is_pair(&priv1));
-
 }
 
 fn bit_count(field: &Vec<u8>) -> usize {
