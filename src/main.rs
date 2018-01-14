@@ -5,7 +5,7 @@ extern crate tealeaves;
 use clap::{App, Arg};
 use std::{env, fs, io, process};
 use std::path::PathBuf;
-use tealeaves::file_info::FileInfo3;
+use tealeaves::file_info::FileInfo;
 
 fn tealeaves3() -> io::Result<()> {
     let matches = App::new("tealeaves")
@@ -40,11 +40,11 @@ fn tealeaves3() -> io::Result<()> {
         }
     }
 
-    let results: Vec<Result<tealeaves::FileInfo3, String>> =
+    let results: Vec<Result<tealeaves::FileInfo, String>> =
         paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
     let (errors, oks): (
-        Vec<Result<FileInfo3, String>>,
-        Vec<Result<FileInfo3, String>>,
+        Vec<Result<FileInfo, String>>,
+        Vec<Result<FileInfo, String>>,
     ) = results.into_iter().partition(|r| r.is_err());
     for result_error in errors {
         match result_error {
@@ -52,26 +52,26 @@ fn tealeaves3() -> io::Result<()> {
             _ => (),
         };
     }
-    let infos: Vec<FileInfo3> = oks.into_iter().map(|r| r.unwrap()).collect();
-    let (publics, others): (Vec<FileInfo3>, Vec<FileInfo3>) =
+    let infos: Vec<FileInfo> = oks.into_iter().map(|r| r.unwrap()).collect();
+    let (publics, others): (Vec<FileInfo>, Vec<FileInfo>) =
         infos.into_iter().partition(|i| match i {
-            &FileInfo3::SshKey(ref _pb, ref key) => key.is_public,
+            &FileInfo::SshKey(ref _pb, ref key) => key.is_public,
             _ => false,
         });
-    // let publics: Vec<&FileInfo3> = infos
+    // let publics: Vec<&FileInfo> = infos
     //     .iter()
     //     .filter(|fi| match *fi {
-    //         &FileInfo3::SshKey(ref key) => key.is_public,
+    //         &FileInfo::SshKey(ref key) => key.is_public,
     //         _ => false,
     //     })
     //     .collect();
     // println!("publics {}", publics.len());
     for info in others {
         match info {
-            FileInfo3::SshKey(ref _pb, ref key) => {
+            FileInfo::SshKey(ref _pb, ref key) => {
                 if !key.is_public {
                     let pair = publics.iter().find(|pub_info| match *pub_info {
-                        &FileInfo3::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
+                        &FileInfo::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
                         _ => false,
                     });
                     match pair {

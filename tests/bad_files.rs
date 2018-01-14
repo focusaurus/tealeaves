@@ -6,7 +6,7 @@ use rsfs::mem::unix::FS;
 use rsfs::mem::unix::Permissions;
 use rsfs::unix_ext::PermissionsExt;
 use std::io::Write;
-use tealeaves::file_info::FileInfo3;
+use tealeaves::file_info::FileInfo;
 
 fn memfs() -> FS {
     let fs = rsfs::mem::unix::FS::new();
@@ -20,7 +20,7 @@ fn empty_file_gets_error() {
     let _empty = fs.create_file("/tmp/empty");
     let file_info = tealeaves::scan(&fs, &"/tmp/empty").unwrap();
     match file_info {
-        FileInfo3::EmptyFile(_) => (),
+        FileInfo::EmptyFile(_) => (),
         _ => panic!("expected EmptyFile"),
     }
 }
@@ -35,7 +35,7 @@ fn unreadable_file_gets_error() {
             .unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/unreadable").unwrap();
         match file_info {
-            FileInfo3::UnreadableFile(_) => (),
+            FileInfo::UnreadableFile(_) => (),
             _ => panic!("Expected Unreadable"),
         }
     }
@@ -51,7 +51,7 @@ fn readable_file_gets_no_error() {
             .unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/readable").unwrap();
         match file_info {
-            FileInfo3::SmallFile(_) => (),
+            FileInfo::SmallFile(_) => (),
             _ => panic!("Expected SmallFile"),
         }
     }
@@ -64,7 +64,7 @@ fn low_size_gets_error() {
     small.write_all(&[1, 2, 3, 4]).unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/small").unwrap();
     match file_info {
-        FileInfo3::SmallFile(_) => (),
+        FileInfo::SmallFile(_) => (),
         _ => panic!("Expected SmallFile"),
     }
 }
@@ -78,7 +78,7 @@ fn prefix_then_bogus_gets_error() {
         .unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/prefix_then_bogus").unwrap();
     match file_info {
-        FileInfo3::Error(_, _) => (),
+        FileInfo::Error(_, _) => (),
         _ => panic!("Expected Error"),
     }
 }
@@ -92,7 +92,7 @@ fn not_pem_gets_detected() {
         .unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/not_pem").unwrap();
     match file_info {
-        FileInfo3::MediumFile(_) => (),
+        FileInfo::MediumFile(_) => (),
         _ => panic!("Expected MediumFile"),
     }
 }
@@ -114,7 +114,7 @@ MEBQY=
     ).unwrap();
     let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
     match file_info {
-        FileInfo3::SshKey(_, _) => (),
+        FileInfo::SshKey(_, _) => (),
         _ => panic!("Expected SshKey"),
     }
 }
@@ -128,7 +128,7 @@ fn high_size_gets_error() {
     }
     let file_info = tealeaves::scan(&fs, &"/tmp/big").unwrap();
     match file_info {
-        FileInfo3::LargeFile(_) => (),
+        FileInfo::LargeFile(_) => (),
         _ => panic!("Expected LargeFile"),
     }
 }
@@ -152,7 +152,7 @@ fn pem_long_field_gets_detected() {
     let result = tealeaves::scan(&fs, &"/tmp/pem-too-long-field");
     assert!(result.is_ok());
     match result.unwrap() {
-        FileInfo3::Error(_, _) => (),
+        FileInfo::Error(_, _) => (),
         _ => panic!("Expected Error"),
     }
 }
@@ -178,7 +178,7 @@ fn asn1_error_gets_detected() {
         pem.write_all(b" PRIVATE KEY-----\n").unwrap();
         let file_info = tealeaves::scan(&fs, &"/tmp/pem").unwrap();
         match file_info {
-            FileInfo3::Error(_, _) => (),
+            FileInfo::Error(_, _) => (),
             _ => panic!("Expected Error"),
         }
     }

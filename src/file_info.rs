@@ -30,7 +30,7 @@ impl fmt::Display for Algorithm {
 }
 
 #[derive(Debug)]
-pub enum FileInfo3 {
+pub enum FileInfo {
     Unknown(path::PathBuf),
     Error(path::PathBuf, String),
     Directory(path::PathBuf),
@@ -43,42 +43,42 @@ pub enum FileInfo3 {
     TlsCertificate(path::PathBuf),
 }
 
-impl fmt::Display for FileInfo3 {
+impl fmt::Display for FileInfo {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         match *self {
-            FileInfo3::Unknown(ref path_buf) => {
+            FileInfo::Unknown(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t⚠️ unrecognized file");
             }
-            FileInfo3::Directory(ref path_buf) => {
+            FileInfo::Directory(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t✓ is a directory");
             }
-            FileInfo3::UnreadableFile(ref path_buf) => {
+            FileInfo::UnreadableFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
 
                 output.push_str("\n\t🔥 missing read permission");
             }
-            FileInfo3::EmptyFile(ref path_buf) => {
+            FileInfo::EmptyFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t⚠️ empty file");
             }
-            FileInfo3::SmallFile(ref path_buf) => {
+            FileInfo::SmallFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
 
                 output.push_str("\n\t⚠️ unrecognized small file")
             }
-            FileInfo3::MediumFile(ref path_buf) => {
+            FileInfo::MediumFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
 
                 output.push_str("\n\t⚠️ unrecognized medium file")
             }
-            FileInfo3::LargeFile(ref path_buf) => {
+            FileInfo::LargeFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t⚠️ unrecognized large file")
             }
-            FileInfo3::SshKey(ref path_buf, ref key) => {
+            FileInfo::SshKey(ref path_buf, ref key) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str(&format!("\n\t✓ {}", key));
 
@@ -101,8 +101,8 @@ impl fmt::Display for FileInfo3 {
                 //     output.push_str("\n\t⚠️ insecure permissions");
                 // }
             }
-            FileInfo3::TlsCertificate(ref _path_buf) => output.push_str("\t⚠️ TLS certificate"),
-            FileInfo3::Error(ref _path_buf, ref message) => {
+            FileInfo::TlsCertificate(ref _path_buf) => output.push_str("\t⚠️ TLS certificate"),
+            FileInfo::Error(ref _path_buf, ref message) => {
                 output.push_str(&format!("\t🚨 Error: {}", message))
             }
         };
@@ -266,7 +266,7 @@ impl Default for SshKey {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use super::{FileInfo3,SshKey,Algorithm};
+    use super::{FileInfo,SshKey,Algorithm};
 
     #[test]
     fn test_file_info_display_encrypted_ed25519() {
@@ -274,7 +274,7 @@ mod tests {
         ssh_key.algorithm = Algorithm::Ed25519;
         ssh_key.is_public = false;
         ssh_key.is_encrypted = true;
-        let file_info = FileInfo3::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             format!("{}", file_info),
             "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n"
@@ -287,7 +287,7 @@ mod tests {
         ssh_key.algorithm = Algorithm::Ecdsa(384);
         ssh_key.is_encrypted = false;
         ssh_key.is_public = false;
-        let file_info = FileInfo3::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             format!("{}", file_info),
             "/unit-test
@@ -304,7 +304,7 @@ mod tests {
         let mut ssh_key: SshKey = Default::default();
         ssh_key.algorithm = Algorithm::Rsa(modulus);
         ssh_key.is_public = true;
-        let file_info = FileInfo3::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             "/unit-test\n\t✓ public ssh key (rsa, 2048 bits)\n",
             format!("{}", file_info)
@@ -316,7 +316,7 @@ mod tests {
         let mut ssh_key: SshKey = Default::default();
         ssh_key.is_encrypted = true;
         ssh_key.algorithm = Algorithm::Rsa(vec![]);
-        let file_info = FileInfo3::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             "/unit-test\n\t✓ private ssh key (rsa, encrypted)\n",
             format!("{}", file_info)

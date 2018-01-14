@@ -3,7 +3,7 @@ extern crate nom_pem;
 extern crate rsfs;
 pub mod file_info;
 pub mod parse;
-pub use file_info::FileInfo3;
+pub use file_info::FileInfo;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
 use rsfs::unix_ext::*;
@@ -27,7 +27,7 @@ pub fn scan<
 >(
     fs: &F,
     path: &AsRef<Path>,
-) -> Result<FileInfo3, String> {
+) -> Result<FileInfo, String> {
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
     let res = fs.metadata(path);
@@ -41,22 +41,22 @@ pub fn scan<
     }
     let meta = res.unwrap();
     if meta.is_dir() {
-        return Ok(file_info::FileInfo3::Directory(path_buf));
+        return Ok(file_info::FileInfo::Directory(path_buf));
     }
     if !meta.is_file() {
-        return Ok(file_info::FileInfo3::Unknown(path_buf));
+        return Ok(file_info::FileInfo::Unknown(path_buf));
     }
     if meta.is_empty() {
-        return Ok(file_info::FileInfo3::EmptyFile(path_buf));
+        return Ok(file_info::FileInfo::EmptyFile(path_buf));
     }
     let mode = meta.permissions().mode();
     // https://www.cyberciti.biz/faq/unix-linux-bsd-chmod-numeric-permissions-notation-command/
     if mode & 0o444 == 0 {
-        return Ok(file_info::FileInfo3::UnreadableFile(path_buf));
+        return Ok(file_info::FileInfo::UnreadableFile(path_buf));
     }
 
     match meta.len() {
-        0...50 => Ok(file_info::FileInfo3::SmallFile(path_buf)),
+        0...50 => Ok(file_info::FileInfo::SmallFile(path_buf)),
         51...4096 => {
             let open_result = fs.open_file(path);
             if open_result.is_err() {
@@ -71,12 +71,12 @@ pub fn scan<
             file.read_to_end(&mut bytes).unwrap();
             if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
                 return match parse::public_key(&bytes) {
-                    Ok(key) => Ok(file_info::FileInfo3::SshKey(path_buf, key)),
-                    Err(error) => Ok(file_info::FileInfo3::Error(path_buf, error)),
+                    Ok(key) => Ok(file_info::FileInfo::SshKey(path_buf, key)),
+                    Err(error) => Ok(file_info::FileInfo::Error(path_buf, error)),
                 };
             }
             if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
-                return Ok(file_info::FileInfo3::TlsCertificate(path_buf));
+                return Ok(file_info::FileInfo::TlsCertificate(path_buf));
                 // TODO parse it
                 // match parse::certificate_request(&bytes) {
                 //     Ok(req) => file_info.certificate_request = Some(req),
@@ -89,7 +89,7 @@ pub fn scan<
             if bytes.starts_with(b"-----BEGIN ") {
                 match parse::private_key(&bytes) {
                     Ok(key) => {
-                        return Ok(file_info::FileInfo3::SshKey(path_buf, key));
+                        return Ok(file_info::FileInfo::SshKey(path_buf, key));
                     }
                     Err(message) => {
                         return Err(message);
@@ -97,8 +97,8 @@ pub fn scan<
                 }
             }
 
-            Ok(file_info::FileInfo3::MediumFile(path_buf))
+            Ok(file_info::FileInfo::MediumFile(path_buf))
         }
-        _ => Ok(file_info::FileInfo3::LargeFile(path_buf)),
+        _ => Ok(file_info::FileInfo::LargeFile(path_buf)),
     }
 }
