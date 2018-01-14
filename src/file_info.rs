@@ -146,6 +146,10 @@ impl SshKey {
             return false;
         }
         match self.algorithm {
+            Algorithm::Ed25519(ref point) => match other.algorithm {
+                Algorithm::Ed25519(ref point2) => point == point2,
+                _ => false,
+            },
             Algorithm::Rsa(ref modulus) => match other.algorithm {
                 Algorithm::Rsa(ref modulus2) => modulus == modulus2,
                 _ => false,
