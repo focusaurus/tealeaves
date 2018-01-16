@@ -64,11 +64,10 @@ fn tealeaves3() -> io::Result<()> {
 
     // Split into public keys and all other variants
     // so we can match public/private pairs together
-    let (publics, others): (Vec<Leaf>, Vec<Leaf>) =
-        leaves.into_iter().partition(|i| match i {
-            &Leaf::SshKey(ref _pb, ref key) => key.is_public,
-            _ => false,
-        });
+    let (publics, others): (Vec<Leaf>, Vec<Leaf>) = leaves.into_iter().partition(|i| match i {
+        &Leaf::SshKey(ref _pb, ref key) => key.is_public,
+        _ => false,
+    });
 
     // Print out everything except public keys
     for leaf in others {

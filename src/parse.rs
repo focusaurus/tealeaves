@@ -189,9 +189,7 @@ named!(
 
 named!(
     nom_ed25519<(&[u8])>,
-    do_parse!(
-        cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (&point)
-    )
+    do_parse!(cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (&point))
 );
 
 named!(
