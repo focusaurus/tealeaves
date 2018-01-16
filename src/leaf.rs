@@ -156,6 +156,12 @@ impl SshKey {
                 Algorithm::Dsa(ref p_integer2) => p_integer == p_integer2,
                 _ => false,
             },
+            Algorithm::Ecdsa(ref curve, ref point) => match other.algorithm {
+                Algorithm::Ecdsa(ref curve2, ref point2) => {
+                    curve == curve2 && point == point2
+                },
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -163,35 +169,48 @@ impl SshKey {
 
 #[test]
 fn test_is_pair() {
-    let mut priv1: SshKey = Default::default();
-    priv1.algorithm = Algorithm::Rsa(vec![1, 2, 3]);
-    assert!(!priv1.is_pair(&priv1));
-    let mut pub1: SshKey = Default::default();
-    pub1.is_public = true;
-    pub1.algorithm = Algorithm::Rsa(vec![1, 2, 3]);
-    assert!(priv1.is_pair(&pub1));
-    assert!(pub1.is_pair(&priv1));
-    let mut pub2: SshKey = Default::default();
-    pub2.is_public = true;
-    pub2.algorithm = Algorithm::Dsa(vec![1, 2, 3]);
-    assert!(!pub2.is_pair(&priv1));
-    let mut pub3: SshKey = Default::default();
-    pub3.is_public = true;
-    pub3.algorithm = Algorithm::Rsa(vec![4, 5, 6]);
-    assert!(!pub3.is_pair(&priv1));
-    assert!(!priv1.is_pair(&pub3));
-    let mut priv2: SshKey = Default::default();
-    priv2.algorithm = Algorithm::Dsa(vec![4, 5, 6]);
-    assert!(!priv2.is_pair(&priv2));
-    assert!(!priv2.is_pair(&pub1));
-    assert!(!priv2.is_pair(&priv1));
+    let mut rsa_priv_1: SshKey = Default::default();
+    rsa_priv_1.algorithm = Algorithm::Rsa(vec![1, 2, 3]);
+    assert!(!rsa_priv_1.is_pair(&rsa_priv_1));
 
-    let mut pub4: SshKey = Default::default();
-    pub4.is_public = true;
-    pub4.algorithm = Algorithm::Dsa(vec![4, 5, 6]);
-    assert!(pub4.is_pair(&priv2));
-    assert!(priv2.is_pair(&pub4));
-    assert!(!pub4.is_pair(&priv1));
+    let mut rsa_pub_1: SshKey = Default::default();
+    rsa_pub_1.is_public = true;
+    rsa_pub_1.algorithm = Algorithm::Rsa(vec![1, 2, 3]);
+    assert!(rsa_priv_1.is_pair(&rsa_pub_1));
+    assert!(rsa_pub_1.is_pair(&rsa_priv_1));
+
+    let mut dsa_pub_1: SshKey = Default::default();
+    dsa_pub_1.is_public = true;
+    dsa_pub_1.algorithm = Algorithm::Dsa(vec![1, 2, 3]);
+    assert!(!dsa_pub_1.is_pair(&rsa_priv_1));
+
+    let mut rsa_pub_2: SshKey = Default::default();
+    rsa_pub_2.is_public = true;
+    rsa_pub_2.algorithm = Algorithm::Rsa(vec![4, 5, 6]);
+    assert!(!rsa_pub_2.is_pair(&rsa_priv_1));
+    assert!(!rsa_priv_1.is_pair(&rsa_pub_2));
+
+    let mut dsa_priv_2: SshKey = Default::default();
+    dsa_priv_2.algorithm = Algorithm::Dsa(vec![4, 5, 6]);
+    assert!(!dsa_priv_2.is_pair(&dsa_priv_2));
+    assert!(!dsa_priv_2.is_pair(&rsa_pub_1));
+    assert!(!dsa_priv_2.is_pair(&rsa_priv_1));
+
+    let mut dsa_pub_2: SshKey = Default::default();
+    dsa_pub_2.is_public = true;
+    dsa_pub_2.algorithm = Algorithm::Dsa(vec![4, 5, 6]);
+    assert!(dsa_pub_2.is_pair(&dsa_priv_2));
+    assert!(dsa_priv_2.is_pair(&dsa_pub_2));
+    assert!(!dsa_pub_2.is_pair(&rsa_priv_1));
+
+    let mut ecdsa_priv_1: SshKey = Default::default();
+    ecdsa_priv_1.algorithm = Algorithm::Ecdsa("nistp384".into(), vec![1, 2, 3]);
+    assert!(!ecdsa_priv_1.is_pair(&rsa_priv_1));
+    let mut ecdsa_pub_1: SshKey = Default::default();
+    ecdsa_pub_1.is_public = true;
+    ecdsa_pub_1.algorithm = Algorithm::Ecdsa("nistp384".into(), vec![1, 2, 3]);
+    assert!(ecdsa_priv_1.is_pair(&ecdsa_pub_1));
+    // assert!(ecdsa_pub_1.is_pair(&ecdsa_priv_1));
 }
 
 fn bit_count(field: &Vec<u8>) -> usize {
