@@ -400,29 +400,32 @@ b9091556d3a5700e7e2790515bb34bc7
 bdbff850a75e4b6dc75327d89ea7846d
 5e7639387e1348d12b468b89689c3cbd
 ```
+
 ## ecdsa private key
 
+- http://www.secg.org/sec1-v2.pdf
 - PEM wrapper (header, base64 payload, footer) with `RSA PRIVATE KEY` tag
 - ASN.1 payload
+```
+ECPrivateKey ::= SEQUENCE {
+version INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
+privateKey OCTET STRING,
+parameters [0] ECDomainParameters {{ SECGCurveNames }} OPTIONAL, publicKey [1] BIT STRING OPTIONAL
+```
 
 ```
-  0 119: SEQUENCE {
-  2   1:   INTEGER 1
-  5  32:   OCTET STRING
-       :     CE EE 48 65 6A B4 F6 A2 FE F4 3D DB D1 7C 99 06
-       :     4A E6 3B 52 D0 72 4C 30 A9 BA E4 76 3E 26 FE C1
- 39  10:   [0] {
- 41   8:     OBJECT IDENTIFIER prime256v1 (1 2 840 10045 3 1 7)
-       :     }
- 51  68:   [1] {
- 53  66:     BIT STRING
-       :       04 B0 A4 CA 7F 39 24 83 78 2C 38 91 F6 23 36 0C
-       :       B8 AF EE 7F 86 55 96 C2 01 1B 36 8F 91 02 F0 5E
-       :       B1 7D 69 E2 14 8C E0 51 45 55 14 8B 43 5B 95 4E
-       :       06 90 DA 7D CB DF 79 26 9A 8F B9 B0 FF 49 FE 40
-       :       C0
-       :     }
-       :   }
+SEQUENCE {
+  INTEGER { 1 }
+  OCTET_STRING { `0c52c1c9d109e29905ad274aec946e18df72c37ba8090d96a60a4229073b9f40` }
+  [0] {
+    # secp256r1
+    OBJECT_IDENTIFIER { 1.2.840.10045.3.1.7 }
+  }
+  [1] {
+    BIT_STRING { `00` `043dc8fe32102b3b68ce5587e78d06bb9441d56cbe73b15ee958bead7ced99c516097e54b5616d36c79ddca0bf37bb52adc5b94a8b8052ebc7ed191fb9300e5966` }
+  }
+}
+
 ```
 
 ```
@@ -448,6 +451,20 @@ a1 tagged 1
 5eb17d69e2148ce0514555148b435b95
 4e0690da7dcbdf79269a8fb9b0ff49fe
 40c0
+```
+
+
+## ecdsa public key format
+
+```
+00000013 length = 19
+65636473612d736861322d6e69737470323536 "ecdsa-sha2-nistp256"
+00000008 length = 8
+6e69737470323536 "nistp256"
+00000041 length = 65
+043dc8fe32102b3b68ce5587e78d06bb9441d56cbe73b15ee958bead7ced99c5
+16097e54b5616d36c79ddca0bf37bb52adc5b94a8b8052ebc7ed191fb9300e59
+66
 ```
 
 ## References
