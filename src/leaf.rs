@@ -127,7 +127,6 @@ pub struct SshKey {
     pub comment: Option<String>,
     pub is_encrypted: bool,
     pub is_public: bool,
-    pub point: Option<Vec<u8>>,
 }
 
 impl SshKey {
@@ -137,7 +136,6 @@ impl SshKey {
             comment: None,
             is_encrypted: false,
             is_public: false,
-            point: None,
         }
     }
 
