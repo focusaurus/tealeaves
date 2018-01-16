@@ -210,7 +210,7 @@ fn test_is_pair() {
     ecdsa_pub_1.is_public = true;
     ecdsa_pub_1.algorithm = Algorithm::Ecdsa("nistp384".into(), vec![1, 2, 3]);
     assert!(ecdsa_priv_1.is_pair(&ecdsa_pub_1));
-    // assert!(ecdsa_pub_1.is_pair(&ecdsa_priv_1));
+    assert!(ecdsa_pub_1.is_pair(&ecdsa_priv_1));
 }
 
 fn bit_count(field: &Vec<u8>) -> usize {
