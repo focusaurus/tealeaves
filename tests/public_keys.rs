@@ -95,7 +95,13 @@ fn ecdsa_256_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(256));
+            match ssh_key.algorithm {
+                Algorithm::Ecdsa(ref curve, ref point) => {
+                    assert_eq!(curve, "nistp256");
+                    assert_eq!(point.len(), 65);
+                }
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".into()));
             assert_eq!(ssh_key.is_encrypted, false);
@@ -113,7 +119,13 @@ fn ecdsa_384_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(384));
+            match ssh_key.algorithm {
+                Algorithm::Ecdsa(ref curve, ref point) => {
+                    assert_eq!(curve, "nistp384");
+                    assert_eq!(point.len(), 97);
+                }
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".into()));
             assert_eq!(ssh_key.is_encrypted, false);
@@ -131,7 +143,13 @@ fn ecdsa_521_public() {
     file.read_to_end(&mut key_bytes).unwrap();
     match public_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(521));
+            match ssh_key.algorithm {
+                Algorithm::Ecdsa(ref curve, ref point) => {
+                    assert_eq!(curve, "nistp521");
+                    assert_eq!(point.len(), 133);
+                }
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, true);
             assert_eq!(ssh_key.comment, Some("unit test comment".into()));
             assert_eq!(ssh_key.is_encrypted, false);

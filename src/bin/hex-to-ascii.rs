@@ -1,6 +1,6 @@
 extern crate hex;
 use std::io;
-use std::io::{ErrorKind,Read};
+use std::io::{ErrorKind, Read};
 use std::iter::Iterator;
 use hex::decode;
 use std::error::Error;
@@ -14,8 +14,8 @@ fn wrap() -> io::Result<()> {
         Ok(bin) => {
             println!("{}", String::from_utf8_lossy(&bin));
             Ok(())
-        },
-        Err(err) => Err(io::Error::new(ErrorKind::InvalidData, err.description()))
+        }
+        Err(err) => Err(io::Error::new(ErrorKind::InvalidData, err.description())),
     }
 }
 

@@ -144,22 +144,22 @@ fn ecdsa_private(input: &[u8]) -> Result<Algorithm, String> {
     ) {
         IResult::Done(_unparsed_suffix, der) => {
             assert_eq!(_unparsed_suffix.len(), 0);
-            let content = der.as_sequence().unwrap()[2]
-                .content
-                .as_context_specific()
-                .unwrap()
-                .1
-                .unwrap()
-                .content;
-            let oid = content.as_oid().unwrap();
+            let seq = der.as_sequence().unwrap();
+            let oid = seq[2].content.as_context_specific().unwrap();
+            let oid = oid.1.unwrap();
+            let oid = oid.content.as_oid().unwrap();
+            let point = seq[3].content.as_context_specific().unwrap();
+            let point = point.1.unwrap().content.as_slice().unwrap();
+            // strip off 2 bytes of the ASN wrapper
+            let point = (&point[2..]).to_owned();
             if oid == &Oid::from(&[0u64, 6, 8, 42, 840, 10_045, 3, 1, 7]) {
-                return Ok(Algorithm::Ecdsa(256));
+                return Ok(Algorithm::Ecdsa("nistp256".into(), point));
             }
             if oid == &Oid::from(&[0u64, 6, 5, 43, 132, 0, 34]) {
-                return Ok(Algorithm::Ecdsa(384));
+                return Ok(Algorithm::Ecdsa("nistp384".into(), point));
             }
             if oid == &Oid::from(&[0u64, 6, 5, 43, 132, 0, 35]) {
-                return Ok(Algorithm::Ecdsa(521));
+                return Ok(Algorithm::Ecdsa("nistp521".into(), point));
             }
             return Ok(Algorithm::Unknown);
         }
@@ -207,6 +207,14 @@ named!(
     )
 );
 
+named!(
+    nom_ecdsa<(&[u8], &[u8])>,
+    do_parse!(
+        key_type: length_bytes!(be_u32) >> curve: length_bytes!(be_u32)
+            >> point: length_bytes!(be_u32) >> (&curve, &point)
+    )
+);
+
 fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_openssh_key_v1_private(bytes) {
         IResult::Done(_tail, (cipher_name, key_bytes)) => {
@@ -232,7 +240,7 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
             ssh_key.is_encrypted = is_encrypted(&block.headers);
             ssh_key.algorithm = match block.block_type {
                 "DSA PRIVATE KEY" => Algorithm::Dsa(vec![]),
-                "EC PRIVATE KEY" => Algorithm::Ecdsa(0),
+                "EC PRIVATE KEY" => Algorithm::Ecdsa("unkown".into(), vec![]),
                 "RSA PRIVATE KEY" => Algorithm::Rsa(vec![]),
                 _ => Algorithm::Unknown,
             };
@@ -298,13 +306,13 @@ fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, Str
         algorithm = Algorithm::Ed25519(vec![]);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
-        algorithm = Algorithm::Ecdsa(256);
+        algorithm = Algorithm::Ecdsa("nistp256".into(), vec![]);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
-        algorithm = Algorithm::Ecdsa(384);
+        algorithm = Algorithm::Ecdsa("nistp384".into(), vec![]);
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
-        algorithm = Algorithm::Ecdsa(521);
+        algorithm = Algorithm::Ecdsa("nistp521".into(), vec![]);
     }
     if algorithm_name.starts_with(b"ssh-dss") {
         algorithm = Algorithm::Dsa(vec![]);
@@ -332,6 +340,16 @@ fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, Str
     if algorithm_name.starts_with(b"ssh-dss") {
         return match nom_dss(&key_bytes) {
             IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp") {
+        return match nom_ecdsa(&key_bytes) {
+            IResult::Done(_tail, (curve, point)) => Ok(Algorithm::Ecdsa(
+                String::from_utf8_lossy(curve).into(),
+                point.to_owned(),
+            )),
             IResult::Error(_error) => Err("Parse error".into()),
             IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
         };

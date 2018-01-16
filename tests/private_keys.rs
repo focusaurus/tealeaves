@@ -74,7 +74,13 @@ fn ecdsa_256_private_clear() {
     file.read_to_end(&mut key_bytes).unwrap();
     match private_key(&key_bytes) {
         Ok(ssh_key) => {
-            assert_eq!(ssh_key.algorithm, Algorithm::Ecdsa(256));
+            match ssh_key.algorithm {
+                Algorithm::Ecdsa(ref curve, ref point) => {
+                    assert_eq!(curve, "nistp256");
+                    assert_eq!(point.len(), 65);
+                }
+                _ => panic!("algorithm not detected correctly"),
+            };
             assert_eq!(ssh_key.is_public, false);
             assert_eq!(ssh_key.is_encrypted, false);
             assert_eq!(ssh_key.comment, None);

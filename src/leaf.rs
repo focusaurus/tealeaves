@@ -5,7 +5,7 @@ pub enum Algorithm {
     Unknown,
     Ed25519(Vec<u8>),
     Rsa(Vec<u8>),
-    Ecdsa(usize),
+    Ecdsa(String, Vec<u8>),
     Dsa(Vec<u8>),
 }
 
@@ -14,7 +14,7 @@ impl fmt::Display for Algorithm {
         match self {
             &Algorithm::Ed25519(_) => write!(out, "ed25519"),
             &Algorithm::Rsa(_) => write!(out, "rsa"),
-            &Algorithm::Ecdsa(curve) => write!(out, "ecdsa, curve p{}", curve),
+            &Algorithm::Ecdsa(ref curve, _) => write!(out, "ecdsa, curve {}", curve),
             &Algorithm::Dsa(_) => write!(out, "dsa"),
             _ => write!(out, "unknown"),
         }
@@ -83,7 +83,7 @@ impl fmt::Display for Leaf {
                     Algorithm::Dsa(_) => {
                         output.push_str("\n\t⚠️ dsa keys are considered insecure");
                     }
-                    Algorithm::Ecdsa(_) => {
+                    Algorithm::Ecdsa(_, _) => {
                         output.push_str("\n\t⚠️ ecdsa keys are considered insecure");
                     }
                     _ => (),
@@ -259,14 +259,14 @@ mod tests {
     #[test]
     fn test_leaf_display_encrypted_ecdsa() {
         let mut ssh_key: SshKey = Default::default();
-        ssh_key.algorithm = Algorithm::Ecdsa(384);
+        ssh_key.algorithm = Algorithm::Ecdsa("nistp384".into(), vec![]);
         ssh_key.is_encrypted = false;
         ssh_key.is_public = false;
         let leaf = Leaf::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             format!("{}", leaf),
             "/unit-test
-\t✓ private ssh key (ecdsa, curve p384, not encrypted)
+\t✓ private ssh key (ecdsa, curve nistp384, not encrypted)
 \t⚠️ ecdsa keys are considered insecure
 "
         );
