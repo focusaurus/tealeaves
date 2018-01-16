@@ -1,7 +1,7 @@
 extern crate tealeaves;
 use std::fs;
 use std::io::Read;
-use tealeaves::file_info::Algorithm;
+use tealeaves::leaf::Algorithm;
 use tealeaves::parse::public_key;
 
 #[test]

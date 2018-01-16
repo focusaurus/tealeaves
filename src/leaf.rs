@@ -22,7 +22,7 @@ impl fmt::Display for Algorithm {
 }
 
 #[derive(Debug)]
-pub enum FileInfo {
+pub enum Leaf {
     Unknown(path::PathBuf),
     Error(path::PathBuf, String),
     Directory(path::PathBuf),
@@ -35,42 +35,42 @@ pub enum FileInfo {
     TlsCertificate(path::PathBuf),
 }
 
-impl fmt::Display for FileInfo {
+impl fmt::Display for Leaf {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
         match *self {
-            FileInfo::Unknown(ref path_buf) => {
+            Leaf::Unknown(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t⚠️ unrecognized file");
             }
-            FileInfo::Directory(ref path_buf) => {
+            Leaf::Directory(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t✓ is a directory");
             }
-            FileInfo::UnreadableFile(ref path_buf) => {
+            Leaf::UnreadableFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
 
                 output.push_str("\n\t🔥 missing read permission");
             }
-            FileInfo::EmptyFile(ref path_buf) => {
+            Leaf::EmptyFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t⚠️ empty file");
             }
-            FileInfo::SmallFile(ref path_buf) => {
+            Leaf::SmallFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
 
                 output.push_str("\n\t⚠️ unrecognized small file")
             }
-            FileInfo::MediumFile(ref path_buf) => {
+            Leaf::MediumFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
 
                 output.push_str("\n\t⚠️ unrecognized medium file")
             }
-            FileInfo::LargeFile(ref path_buf) => {
+            Leaf::LargeFile(ref path_buf) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str("\n\t⚠️ unrecognized large file")
             }
-            FileInfo::SshKey(ref path_buf, ref key) => {
+            Leaf::SshKey(ref path_buf, ref key) => {
                 output.push_str(path_buf.to_str().unwrap_or("/"));
                 output.push_str(&format!("\n\t✓ {}", key));
 
@@ -93,8 +93,8 @@ impl fmt::Display for FileInfo {
                 //     output.push_str("\n\t⚠️ insecure permissions");
                 // }
             }
-            FileInfo::TlsCertificate(ref _path_buf) => output.push_str("\t⚠️ TLS certificate"),
-            FileInfo::Error(ref _path_buf, ref message) => {
+            Leaf::TlsCertificate(ref _path_buf) => output.push_str("\t⚠️ TLS certificate"),
+            Leaf::Error(ref _path_buf, ref message) => {
                 output.push_str(&format!("\t🚨 Error: {}", message))
             }
         };
@@ -243,30 +243,30 @@ impl Default for SshKey {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use super::{Algorithm, FileInfo, SshKey};
+    use super::{Algorithm, Leaf, SshKey};
 
     #[test]
-    fn test_file_info_display_encrypted_ed25519() {
+    fn test_leaf_display_encrypted_ed25519() {
         let mut ssh_key: SshKey = Default::default();
         ssh_key.algorithm = Algorithm::Ed25519(vec![]);
         ssh_key.is_public = false;
         ssh_key.is_encrypted = true;
-        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let leaf = Leaf::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
-            format!("{}", file_info),
+            format!("{}", leaf),
             "/unit-test\n\t✓ private ssh key (ed25519, encrypted)\n"
         );
     }
 
     #[test]
-    fn test_file_info_display_encrypted_ecdsa() {
+    fn test_leaf_display_encrypted_ecdsa() {
         let mut ssh_key: SshKey = Default::default();
         ssh_key.algorithm = Algorithm::Ecdsa(384);
         ssh_key.is_encrypted = false;
         ssh_key.is_public = false;
-        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let leaf = Leaf::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
-            format!("{}", file_info),
+            format!("{}", leaf),
             "/unit-test
 \t✓ private ssh key (ecdsa, curve p384, not encrypted)
 \t⚠️ ecdsa keys are considered insecure
@@ -275,28 +275,28 @@ mod tests {
     }
 
     #[test]
-    fn test_file_info_display_rsa_public() {
+    fn test_leaf_display_rsa_public() {
         let mut modulus = vec![];
         modulus.extend_from_slice(&[0u8; 256]);
         let mut ssh_key: SshKey = Default::default();
         ssh_key.algorithm = Algorithm::Rsa(modulus);
         ssh_key.is_public = true;
-        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let leaf = Leaf::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             "/unit-test\n\t✓ public ssh key (rsa, 2048 bits)\n",
-            format!("{}", file_info)
+            format!("{}", leaf)
         );
     }
 
     #[test]
-    fn test_file_info_display_rsa_private_passphrase() {
+    fn test_leaf_display_rsa_private_passphrase() {
         let mut ssh_key: SshKey = Default::default();
         ssh_key.is_encrypted = true;
         ssh_key.algorithm = Algorithm::Rsa(vec![]);
-        let file_info = FileInfo::SshKey(PathBuf::from("/unit-test"), ssh_key);
+        let leaf = Leaf::SshKey(PathBuf::from("/unit-test"), ssh_key);
         assert_eq!(
             "/unit-test\n\t✓ private ssh key (rsa, encrypted)\n",
-            format!("{}", file_info)
+            format!("{}", leaf)
         );
     }
 }

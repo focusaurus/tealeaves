@@ -2,7 +2,7 @@ extern crate tealeaves;
 use std::fs;
 use std::io::Read;
 use tealeaves::parse::private_key;
-use tealeaves::file_info::Algorithm;
+use tealeaves::leaf::Algorithm;
 
 fn test_vec(length: usize) -> Vec<u8> {
     let mut modulus = vec![];

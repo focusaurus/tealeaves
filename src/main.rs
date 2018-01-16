@@ -5,7 +5,7 @@ extern crate tealeaves;
 use clap::{App, Arg};
 use std::{env, fs, io, process};
 use std::path::PathBuf;
-use tealeaves::file_info::FileInfo;
+use tealeaves::leaf::Leaf;
 
 fn tealeaves3() -> io::Result<()> {
     let matches = App::new("tealeaves")
@@ -44,11 +44,11 @@ fn tealeaves3() -> io::Result<()> {
     }
 
     // Scan all the paths
-    let results: Vec<Result<tealeaves::FileInfo, String>> =
+    let results: Vec<Result<tealeaves::Leaf, String>> =
         paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
 
     // Split the results apart into Err and Ok
-    let (errors, oks): (Vec<Result<FileInfo, String>>, Vec<Result<FileInfo, String>>) =
+    let (errors, oks): (Vec<Result<Leaf, String>>, Vec<Result<Leaf, String>>) =
         results.into_iter().partition(|r| r.is_err());
 
     // Print the errors
@@ -60,29 +60,29 @@ fn tealeaves3() -> io::Result<()> {
     }
 
     // Unwrap all the Oks so we don't need to deal with Result any more
-    let infos: Vec<FileInfo> = oks.into_iter().map(|r| r.unwrap()).collect();
+    let leaves: Vec<Leaf> = oks.into_iter().map(|r| r.unwrap()).collect();
 
     // Split into public keys and all other variants
     // so we can match public/private pairs together
-    let (publics, others): (Vec<FileInfo>, Vec<FileInfo>) =
-        infos.into_iter().partition(|i| match i {
-            &FileInfo::SshKey(ref _pb, ref key) => key.is_public,
+    let (publics, others): (Vec<Leaf>, Vec<Leaf>) =
+        leaves.into_iter().partition(|i| match i {
+            &Leaf::SshKey(ref _pb, ref key) => key.is_public,
             _ => false,
         });
 
     // Print out everything except public keys
-    for info in others {
-        match info {
-            FileInfo::SshKey(ref _pb, ref key) => {
-                print!("{}", info);
+    for leaf in others {
+        match leaf {
+            Leaf::SshKey(ref _pb, ref key) => {
+                print!("{}", leaf);
                 if !key.is_public {
-                    let pair = publics.iter().find(|pub_info| match *pub_info {
-                        &FileInfo::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
+                    let pair = publics.iter().find(|pub_leaf| match *pub_leaf {
+                        &Leaf::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
                         _ => false,
                     });
                     match pair {
                         Some(pub_key) => match *pub_key {
-                            FileInfo::SshKey(ref path, _) => {
+                            Leaf::SshKey(ref path, _) => {
                                 println!("\tpairs with public key at: {}\n", path.display());
                             }
                             _ => println!("\n"),
@@ -91,7 +91,7 @@ fn tealeaves3() -> io::Result<()> {
                     }
                 }
             }
-            _ => println!("{}", info),
+            _ => println!("{}", leaf),
         }
     }
 

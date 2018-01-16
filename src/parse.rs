@@ -1,5 +1,5 @@
 use base64;
-use file_info::{Algorithm, CertificateRequest, SshKey};
+use leaf::{Algorithm, CertificateRequest, SshKey};
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
