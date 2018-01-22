@@ -4,6 +4,7 @@ use base64;
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
+use x509_parser;
 use der_parser::{der_read_element_content_as, parse_der, parse_der_implicit, parse_der_integer,
                  parse_der_octetstring, DerObject, DerObjectContent, DerTag};
 use der_parser::oid::Oid;
@@ -443,11 +444,15 @@ fn parse_certificate_request(asn1_bytes: &[u8]) {
 // }
 pub fn certificate(bytes: &[u8]) -> Result<Certificate, String> {
     match nom_pem::decode_block(bytes) {
-        Ok(block) => {
-            let mut certificate_request: Certificate = Default::default();
-            certificate_request.subject = "TODO".into();
-            Ok(certificate_request)
-        }
+        Ok(block) => match x509_parser::x509_parser(&block.data) {
+            IResult::Done(_unparsed_suffix, x509) => {
+                let mut cert: Certificate = Default::default();
+                cert.subject = format!("{}", x509.tbs_certificate().unwrap().subject());
+                Ok(cert)
+            }
+            IResult::Error(error) => Err(format!("{}", error)),
+            IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
+        },
         Err(error) => Err(format!("PEM error: {:?}", error)),
     }
 }

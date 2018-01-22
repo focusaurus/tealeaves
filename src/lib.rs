@@ -1,6 +1,7 @@
 extern crate base64;
 extern crate nom_pem;
 extern crate rsfs;
+extern crate x509_parser;
 mod certificate;
 mod ssh_key;
 pub mod leaf;
