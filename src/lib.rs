@@ -1,6 +1,8 @@
 extern crate base64;
 extern crate nom_pem;
 extern crate rsfs;
+mod certificate;
+mod ssh_key;
 pub mod leaf;
 pub mod parse;
 pub use leaf::Leaf;
@@ -75,16 +77,11 @@ pub fn scan<
                     Err(error) => Ok(leaf::Leaf::Error(path_buf, error)),
                 };
             }
-            if bytes.starts_with(b"-----BEGIN CERTIFICATE REQUEST----") {
-                return Ok(leaf::Leaf::TlsCertificate(path_buf));
-                // TODO parse it
-                // match parse::certificate_request(&bytes) {
-                //     Ok(req) => leaf.certificate_request = Some(req),
-                //     Err(message) => leaf.error = Some(message),
-                // }
-                // if leaf.certificate_request.is_some() {
-                //     leaf.is_pem = true;
-                // }
+            if bytes.starts_with(b"-----BEGIN CERTIFICATE----") {
+                return match parse::certificate(&bytes) {
+                    Ok(cert) => Ok(leaf::Leaf::Certificate(path_buf, cert)),
+                    Err(error) => Ok(leaf::Leaf::Error(path_buf, error)),
+                };
             }
             if bytes.starts_with(b"-----BEGIN ") {
                 match parse::private_key(&bytes) {

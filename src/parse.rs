@@ -1,5 +1,6 @@
+use certificate::Certificate;
+use ssh_key::{Algorithm, SshKey};
 use base64;
-use leaf::{Algorithm, CertificateRequest, SshKey};
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
@@ -249,10 +250,14 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
                 return Ok(ssh_key);
             }
             match block.block_type {
-                "CERTIFICATE REQUEST" => {
-                    // TODO handle CSR
-                    ssh_key.algorithm = Algorithm::Dsa(vec![]);
-                }
+                // "CERTIFICATE REQUEST" => {
+                //     // TODO handle CSR
+                //     ssh_key.algorithm = Algorithm::Dsa(vec![]);
+                // }
+                // "CERTIFICATE" => {
+                //     let mut certificate: TlsCertificate = Default::default();
+                //     return Ok(certificate);
+                // }
                 "DSA PRIVATE KEY" => {
                     ssh_key.algorithm = dsa_private(&block.data)?;
                 }
@@ -378,7 +383,7 @@ pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
         IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
     }
 }
-
+/*
 fn parse_certificate_request(asn1_bytes: &[u8]) {
     let der_result = parse_der(&asn1_bytes);
     match der_result {
@@ -419,17 +424,28 @@ fn parse_certificate_request(asn1_bytes: &[u8]) {
         }
     };
 }
-
-pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
+*/
+//
+// pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
+//     match nom_pem::decode_block(bytes) {
+//         Ok(block) => {
+//             let mut certificate_request: CertificateRequest = Default::default();
+//             certificate_request.is_encrypted = is_encrypted(&block.headers);
+//             if certificate_request.is_encrypted {
+//                 // Can't determine details without passphrase
+//                 return Ok(certificate_request);
+//             }
+//             parse_certificate_request(&block.data);
+//             Ok(certificate_request)
+//         }
+//         Err(error) => Err(format!("PEM error: {:?}", error)),
+//     }
+// }
+pub fn certificate(bytes: &[u8]) -> Result<Certificate, String> {
     match nom_pem::decode_block(bytes) {
         Ok(block) => {
-            let mut certificate_request: CertificateRequest = Default::default();
-            certificate_request.is_encrypted = is_encrypted(&block.headers);
-            if certificate_request.is_encrypted {
-                // Can't determine details without passphrase
-                return Ok(certificate_request);
-            }
-            parse_certificate_request(&block.data);
+            let mut certificate_request: Certificate = Default::default();
+            certificate_request.subject = "TODO".into();
             Ok(certificate_request)
         }
         Err(error) => Err(format!("PEM error: {:?}", error)),
