@@ -14,3 +14,4 @@ rsfs = "0.4.1"
 rusticata-macros = "0.3.3"    # Helper macros for Rusticata
 hex = "0.3.1"             # Encoding and decoding data into/from hexadecimal representation.
 x509-parser = { path = "../x509-parser" }
+time = "0.1"

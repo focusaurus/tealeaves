@@ -290,6 +290,7 @@ dependencies = [
  "nom_pem 1.0.4",
  "rsfs 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusticata-macros 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "x509-parser 0.1.0",
 ]
 
