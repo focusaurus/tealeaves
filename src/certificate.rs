@@ -19,6 +19,12 @@ impl Default for Certificate {
 
 impl fmt::Display for Certificate {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "x509 TLS Certificate")
+        write!(
+            out,
+            "x509 TLS Certificate
+\tSubject: {}
+",
+            self.subject
+        )
     }
 }
