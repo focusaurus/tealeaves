@@ -111,11 +111,11 @@ fn test_is_pair() {
     assert!(ecdsa_pub_1.is_pair(&ecdsa_priv_1));
 
     let mut ed25519_priv_1: SshKey = Default::default();
-    ed25519_priv_1.algorithm = Algorithm::Ed25519(vec![7,8,9]);
+    ed25519_priv_1.algorithm = Algorithm::Ed25519(vec![7, 8, 9]);
     assert!(!ed25519_priv_1.is_pair(&rsa_priv_1));
     let mut ed25519_pub_1: SshKey = Default::default();
     ed25519_pub_1.is_public = true;
-    ed25519_pub_1.algorithm = Algorithm::Ed25519(vec![7,8,9]);
+    ed25519_pub_1.algorithm = Algorithm::Ed25519(vec![7, 8, 9]);
     assert!(ed25519_priv_1.is_pair(&ed25519_pub_1));
     assert!(ed25519_pub_1.is_pair(&ed25519_priv_1));
 }
