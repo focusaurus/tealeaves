@@ -5,7 +5,6 @@ authors = ["Peter Lyons <pete@peterlyons.com>"]
 
 [dependencies]
 base64 = "0.6.0"
-clap = "2.27.1"
 der-parser = "0.4.4"
 nom = "3.2.1"
 nom_pem = { path = "../nom_pem" }
@@ -15,3 +14,5 @@ rusticata-macros = "0.3.3"    # Helper macros for Rusticata
 hex = "0.3.1"             # Encoding and decoding data into/from hexadecimal representation.
 x509-parser = { path = "../x509-parser" }
 time = "0.1"
+structopt = "0.1.7"           # Parse command line argument by defining a struct.
+structopt-derive = "0.1.6"    # Parse command line argument by defining a struct, derive crate.

@@ -1,48 +1,39 @@
-#[macro_use(crate_version)]
-extern crate clap;
 extern crate rsfs;
+extern crate structopt;
+#[macro_use(StructOpt)]
+extern crate structopt_derive;
 extern crate tealeaves;
-use clap::{App, Arg};
 use std::{env, fs, io, process};
 use std::path::PathBuf;
+use structopt::StructOpt;
 use tealeaves::leaf::Leaf;
 
-fn tealeaves3() -> io::Result<()> {
-    let matches = App::new("tealeaves")
-        .version(crate_version!())
-        .about("Helps you figure out TLS/SSH stuff")
-        .arg(
-            Arg::with_name("paths")
-                .takes_value(true)
-                .multiple(true)
-                .help("Paths to files/directories of interest"),
-        )
-        .get_matches();
+#[derive(StructOpt, Debug)]
+#[structopt(name = "tealeaves", about = "Helps you figure out SSH/TLS stuff")]
+struct Opt {
+    #[structopt(help = "Paths to files/directories of interest", parse(from_os_str))]
+    paths: Vec<PathBuf>,
+}
+
+fn tealeaves() -> io::Result<()> {
+    let opt = Opt::from_args();
     let fs = rsfs::disk::FS;
 
     // Gather the list of paths we will inspect
     // either command line args or by listing ~/.ssh
-    let mut paths: Vec<PathBuf> = vec![];
-    // Sigh. PathBuf does not impl FromStr
-    // https://github.com/rust-lang/rust/issues/44431
-    match matches.values_of("paths") {
-        Some(values) => {
-            paths = values.map(|v| PathBuf::from(v)).collect();
-        }
-        None => {
-            // If no paths on command line, scan ~/.ssh
-            match env::home_dir() {
-                Some(home) => {
-                    let dot_ssh = home.join(".ssh");
-                    paths = fs::read_dir(dot_ssh)?
-                        .map(|dir_entry| dir_entry.unwrap().path())
-                        .collect();
-                }
-                None => eprintln!("Error determining your home directory via HOME env var"),
+    let mut paths: Vec<PathBuf> = opt.paths;
+    if paths.len() < 1 {
+        // If no paths on command line, scan ~/.ssh
+        match env::home_dir() {
+            Some(home) => {
+                let dot_ssh = home.join(".ssh");
+                paths = fs::read_dir(dot_ssh)?
+                    .map(|dir_entry| dir_entry.unwrap().path())
+                    .collect();
             }
+            None => eprintln!("Error determining your home directory via HOME env var"),
         }
     }
-
     // Scan all the paths
     let results: Vec<Result<tealeaves::Leaf, String>> =
         paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
@@ -103,7 +94,7 @@ fn tealeaves3() -> io::Result<()> {
 }
 
 fn main() {
-    match tealeaves3() {
+    match tealeaves() {
         Ok(_) => {}
         Err(error) => {
             eprintln!("{}", error);
