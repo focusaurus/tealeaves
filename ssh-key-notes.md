@@ -36,7 +36,7 @@ OpenSSH supports the following key types
 0000000b int length = 11
 7373682d65643235353139 string key type = ssh-ed25519
 00000020 int length = 32
-# public key payload32 bytes
+# public key payload 32 bytes
 # probably encoding a point on the ed25519 curve
 3cfe2afb025f46582e502b97f7dfa5a0
 8dea09f87abfa8d5bfcaabf29fbb3695
@@ -49,7 +49,7 @@ a2224bbaa2224bba iv/salt? (Not sure about these 8 bytes)
 0000000b int length = 11
 7373682d656432353531 39 string key type = ssh-ed25519
 00000020  int length = 32
-# public key payload32 bytes
+# public key payload 32 bytes
 # probably encoding a point on the ed25519 curve
 3cfe2afb025f46582e502b97f7dfa5a0
 8dea09f87abfa8d5bfcaabf29fbb3695
@@ -89,7 +89,7 @@ d08f6b8fd17593f246db4ac6c45a1193 salt/iv for bcrypt
 0000000b int length = 11
 7373682d65643235353139 string key type = ssh-ed25519
 00000020 int length = 32
-# public key payload32 bytes
+# public key payload 32 bytes
 # probably encoding a point on the ed25519 curve
 62837be86c63712896b8e0e7543e367c
 3abd0c0b5ad3e764ea0e4f8ddd7d00ef
@@ -485,6 +485,7 @@ a1 tagged 1
 - https://tools.ietf.org/html/rfc2045
 - https://fly.io/articles/how-rsa-works-tls-foundations/
 - https://www.royalfork.org/2014/09/04/ecc/
+- https://security.stackexchange.com/a/23385/67167
 
 ## Stream of consciousness notes to organize later
 
