@@ -1,4 +1,18 @@
 use std::fmt;
+use base64;
+use certificate::Certificate;
+use der_parser::oid::Oid;
+use nom_pem;
+use nom_pem::{HeaderEntry, ProcTypeType};
+use nom::IResult;
+use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
+                 parse_der_octetstring, DerObject, DerObjectContent, DerTag};
+
+// My code does not directly use these names. Why do I need to `use` them?
+use der_parser::der_read_element_header;
+
+// My code does not directly use these names. Why do I need to `use` them?
+use nom::{Err, ErrorKind, be_u32};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Algorithm {
@@ -162,4 +176,94 @@ impl Default for SshKey {
     fn default() -> Self {
         Self::new()
     }
+}
+
+named!(
+    nom_ed25519<(&[u8])>,
+    do_parse!(cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (&point))
+);
+
+named!(
+    nom_rsa<(&[u8])>,
+    do_parse!(
+        cipher_name: length_bytes!(be_u32) >> _ver_or_exp: length_bytes!(be_u32)
+            >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
+    )
+);
+
+named!(
+    nom_dss<(&[u8])>,
+    do_parse!(
+        cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32) >> (&p_integer[1..])
+    )
+);
+
+named!(
+    nom_ecdsa<(&[u8], &[u8])>,
+    do_parse!(
+        key_type: length_bytes!(be_u32) >> curve: length_bytes!(be_u32)
+            >> point: length_bytes!(be_u32) >> (&curve, &point)
+    )
+);
+
+pub fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, String> {
+    if key_bytes.len() < 4 {
+        return Err("Too short to be a valid ssh key".into());
+    }
+    let mut algorithm = Algorithm::Unknown;
+    // Skip 4-byte length indicator
+    let algorithm_name = &key_bytes[4..];
+    if algorithm_name.starts_with(b"ssh-ed25519") {
+        algorithm = Algorithm::Ed25519(vec![]);
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
+        algorithm = Algorithm::Ecdsa("nistp256".into(), vec![]);
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
+        algorithm = Algorithm::Ecdsa("nistp384".into(), vec![]);
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
+        algorithm = Algorithm::Ecdsa("nistp521".into(), vec![]);
+    }
+    if algorithm_name.starts_with(b"ssh-dss") {
+        algorithm = Algorithm::Dsa(vec![]);
+    }
+    if algorithm_name.starts_with(b"ssh-rsa") {
+        algorithm = Algorithm::Rsa(vec![]);
+    }
+    if is_encrypted {
+        return Ok(algorithm);
+    }
+    if algorithm_name.starts_with(b"ssh-ed25519") {
+        return match nom_ed25519(&key_bytes) {
+            IResult::Done(_tail, point) => Ok(Algorithm::Ed25519(point.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    if algorithm_name.starts_with(b"ssh-rsa") {
+        return match nom_rsa(&key_bytes) {
+            IResult::Done(_tail, modulus) => Ok(Algorithm::Rsa(modulus.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    if algorithm_name.starts_with(b"ssh-dss") {
+        return match nom_dss(&key_bytes) {
+            IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    if algorithm_name.starts_with(b"ecdsa-sha2-nistp") {
+        return match nom_ecdsa(&key_bytes) {
+            IResult::Done(_tail, (curve, point)) => Ok(Algorithm::Ecdsa(
+                String::from_utf8_lossy(curve).into(),
+                point.to_owned(),
+            )),
+            IResult::Error(_error) => Err("Parse error".into()),
+            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        };
+    }
+    Ok(algorithm)
 }

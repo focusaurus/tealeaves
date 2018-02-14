@@ -4,7 +4,7 @@ use der_parser::oid::Oid;
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
-use ssh_key::{Algorithm, SshKey};
+use ssh_key::{Algorithm, SshKey, peek_algorithm};
 use std::fmt;
 use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
                  parse_der_octetstring, DerObject, DerObjectContent, DerTag};
@@ -235,7 +235,7 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
     }
 }
 
-pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
+pub fn parse(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_pem::decode_block(bytes) {
         Ok(block) => {
             let mut ssh_key: SshKey = Default::default();
@@ -290,158 +290,3 @@ pub fn private_key(bytes: &[u8]) -> Result<SshKey, String> {
         Err(error) => Err(format!("PEM error: {:?}", error)),
     }
 }
-
-named!(space_sep, is_a_s!(" \t"));
-named!(value, is_not_s!(" \t"));
-named!(
-    nom_public_key<(&[u8], &[u8], &[u8])>,
-    do_parse!(
-        algorithm: value >> separator: space_sep >> payload: value >> separator: space_sep
-            >> comment: is_not_s!("\r\n") >> (algorithm, payload, comment)
-    )
-);
-
-fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm, String> {
-    if key_bytes.len() < 4 {
-        return Err("Too short to be a valid ssh key".into());
-    }
-    let mut algorithm = Algorithm::Unknown;
-    // Skip 4-byte length indicator
-    let algorithm_name = &key_bytes[4..];
-    if algorithm_name.starts_with(b"ssh-ed25519") {
-        algorithm = Algorithm::Ed25519(vec![]);
-    }
-    if algorithm_name.starts_with(b"ecdsa-sha2-nistp256") {
-        algorithm = Algorithm::Ecdsa("nistp256".into(), vec![]);
-    }
-    if algorithm_name.starts_with(b"ecdsa-sha2-nistp384") {
-        algorithm = Algorithm::Ecdsa("nistp384".into(), vec![]);
-    }
-    if algorithm_name.starts_with(b"ecdsa-sha2-nistp521") {
-        algorithm = Algorithm::Ecdsa("nistp521".into(), vec![]);
-    }
-    if algorithm_name.starts_with(b"ssh-dss") {
-        algorithm = Algorithm::Dsa(vec![]);
-    }
-    if algorithm_name.starts_with(b"ssh-rsa") {
-        algorithm = Algorithm::Rsa(vec![]);
-    }
-    if is_encrypted {
-        return Ok(algorithm);
-    }
-    if algorithm_name.starts_with(b"ssh-ed25519") {
-        return match nom_ed25519(&key_bytes) {
-            IResult::Done(_tail, point) => Ok(Algorithm::Ed25519(point.to_owned())),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-        };
-    }
-    if algorithm_name.starts_with(b"ssh-rsa") {
-        return match nom_rsa(&key_bytes) {
-            IResult::Done(_tail, modulus) => Ok(Algorithm::Rsa(modulus.to_owned())),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-        };
-    }
-    if algorithm_name.starts_with(b"ssh-dss") {
-        return match nom_dss(&key_bytes) {
-            IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-        };
-    }
-    if algorithm_name.starts_with(b"ecdsa-sha2-nistp") {
-        return match nom_ecdsa(&key_bytes) {
-            IResult::Done(_tail, (curve, point)) => Ok(Algorithm::Ecdsa(
-                String::from_utf8_lossy(curve).into(),
-                point.to_owned(),
-            )),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-        };
-    }
-    Ok(algorithm)
-}
-
-pub fn public_key(bytes: &[u8]) -> Result<SshKey, String> {
-    match nom_public_key(bytes) {
-        IResult::Done(_input, (_label, payload, comment)) => {
-            let mut ssh_key: SshKey = Default::default();
-            ssh_key.is_public = true;
-            ssh_key.comment = Some(String::from_utf8_lossy(comment).into_owned());
-            match base64::decode(payload) {
-                Ok(key_bytes) => match peek_algorithm(false, &key_bytes) {
-                    Ok(algorithm) => {
-                        ssh_key.algorithm = algorithm;
-                        Ok(ssh_key)
-                    }
-                    Err(message) => Err(message),
-                },
-                Err(_) => Err("Invalid Base64".into()),
-            }
-        }
-        IResult::Error(_error) => Err("Parse error".into()),
-        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
-    }
-}
-/*
-fn parse_certificate_request(asn1_bytes: &[u8]) {
-    let der_result = parse_der(&asn1_bytes);
-    match der_result {
-        IResult::Done(_input, der) => {
-            assert_eq!(_input.len(), 0);
-            let seq0 = der.as_sequence().unwrap();
-            let seq1 = seq0[0].as_sequence().unwrap();
-            let version = &seq1[0].content.as_u32().unwrap();
-            println!("version {:?}", version);
-            let seq2 = &seq1[1].content.as_sequence().unwrap();
-
-            for i in 0..6 {
-                let seq4 = &seq2[i].as_set().unwrap()[0].as_sequence().unwrap();
-                let oid = &seq4[0].as_oid().unwrap();
-                println!("oid {:?}", oid);
-                let value = &seq4[1].as_slice().unwrap();
-                println!("value {}", String::from_utf8_lossy(value));
-            }
-            // let seq4 = &seq2[1].as_set().unwrap()[0].as_sequence().unwrap();
-            // let oid = &seq4[0].as_oid().unwrap();
-            // println!("oid {:?}", oid);
-            // let state = &seq4[1].as_slice().unwrap();
-            // println!("state {}", String::from_utf8_lossy(state));
-            // // let country = &seq3[1]
-            // if seq1.len() < 1 {
-            //     //return Err(der_parser::DerError::DerValueError);
-            //     return;
-            // }
-        }
-        IResult::Error(error) => {
-            eprintln!("{}", error);
-            // Err(der_parser::DerError::DerValueError)
-            // Err(io::Error::new(io::ErrorKind::Other, error))
-        }
-        IResult::Incomplete(_needed) => {
-            eprintln!("{:?}", _needed);
-            // Err(der_parser::DerError::DerValueError)
-        }
-    };
-}
-*/
-//
-// pub fn certificate_request(bytes: &[u8]) -> Result<CertificateRequest, String> {
-//     match nom_pem::decode_block(bytes) {
-//         Ok(block) => {
-//             let mut certificate_request: CertificateRequest = Default::default();
-//             certificate_request.is_encrypted = is_encrypted(&block.headers);
-//             if certificate_request.is_encrypted {
-//                 // Can't determine details without passphrase
-//                 return Ok(certificate_request);
-//             }
-//             parse_certificate_request(&block.data);
-//             Ok(certificate_request)
-//         }
-//         Err(error) => Err(format!("PEM error: {:?}", error)),
-//     }
-// }
-// fn stringify (ppe: nom_pem::PemParsingError) -> String {
-//     format!("{:?}", ppe)
-// }

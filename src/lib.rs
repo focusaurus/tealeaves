@@ -5,9 +5,10 @@ extern crate rsfs;
 extern crate time;
 extern crate x509_parser;
 pub mod certificate;
-pub mod ssh_key;
 pub mod leaf;
-pub mod parse;
+pub mod private_key;
+pub mod public_key;
+pub mod ssh_key;
 pub use leaf::Leaf;
 use rsfs::{GenFS, Metadata};
 use rsfs::*;
@@ -75,7 +76,7 @@ pub fn scan<
             let mut bytes = vec![];
             file.read_to_end(&mut bytes).unwrap();
             if bytes.starts_with(b"ssh-") || bytes.starts_with(b"ecdsa-") {
-                return match parse::public_key(&bytes) {
+                return match public_key::parse(&bytes) {
                     Ok(key) => Ok(leaf::Leaf::SshKey(path_buf, key)),
                     Err(error) => Ok(leaf::Leaf::Error(path_buf, error)),
                 };
@@ -87,7 +88,7 @@ pub fn scan<
                 };
             }
             if bytes.starts_with(b"-----BEGIN ") {
-                match parse::private_key(&bytes) {
+                match private_key::parse(&bytes) {
                     Ok(key) => {
                         return Ok(leaf::Leaf::SshKey(path_buf, key));
                     }
