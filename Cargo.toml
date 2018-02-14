@@ -12,7 +12,8 @@ nom_pem = { path = "../nom_pem" }
 rsfs = "0.4.1"
 rusticata-macros = "0.3.3"    # Helper macros for Rusticata
 hex = "0.3.1"             # Encoding and decoding data into/from hexadecimal representation.
-x509-parser = { path = "../x509-parser" }
+# x509-parser = { path = "../x509-parser" }
+x509-parser = "0.1.0"     # Parser for BER/DER encoding data
 time = "0.1"
 structopt = "0.1.7"           # Parse command line argument by defining a struct.
 structopt-derive = "0.1.6"    # Parse command line argument by defining a struct, derive crate.

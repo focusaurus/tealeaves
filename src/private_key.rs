@@ -223,14 +223,6 @@ pub fn parse(bytes: &[u8]) -> Result<SshKey, String> {
                 return Ok(ssh_key);
             }
             match block.block_type {
-                // "CERTIFICATE REQUEST" => {
-                //     // TODO handle CSR
-                //     ssh_key.algorithm = Algorithm::Dsa(vec![]);
-                // }
-                // "CERTIFICATE" => {
-                //     let mut certificate: TlsCertificate = Default::default();
-                //     return Ok(certificate);
-                // }
                 "DSA PRIVATE KEY" => {
                     ssh_key.algorithm = dsa_private(&block.data)?;
                 }
