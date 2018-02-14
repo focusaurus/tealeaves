@@ -6,8 +6,6 @@ use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
 use ssh_key::{Algorithm, SshKey};
 use std::fmt;
-use time;
-use x509_parser;
 use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
                  parse_der_octetstring, DerObject, DerObjectContent, DerTag};
 
@@ -447,25 +445,3 @@ fn parse_certificate_request(asn1_bytes: &[u8]) {
 // fn stringify (ppe: nom_pem::PemParsingError) -> String {
 //     format!("{:?}", ppe)
 // }
-
-fn strerr<T>(error: T) -> String
-where
-    T: fmt::Debug,
-{
-    return format!("{:?}", error);
-}
-
-pub fn certificate(bytes: &[u8]) -> Result<Certificate, String> {
-    let block: nom_pem::Block = nom_pem::decode_block(bytes).map_err(strerr)?;
-    let xcert = x509_parser::x509_parser(&block.data)
-        .to_full_result()
-        .map_err(|nie| format!("{:?}", nie))?;
-    let tbs = xcert.tbs_certificate().map_err(|nie| format!("{:?}", nie))?;
-    let tm_vec = xcert
-        .tbs_certificate()
-        .and_then(|tbs| tbs.validity())
-        .map_err(strerr)?;
-    let expires: Result<time::Tm, String> =
-        tm_vec.into_iter().nth(1).ok_or("Validity Error".into());
-    return Ok(Certificate::new(tbs.subject().to_string(), expires?));
-}

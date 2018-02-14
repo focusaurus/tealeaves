@@ -81,7 +81,7 @@ pub fn scan<
                 };
             }
             if bytes.starts_with(b"-----BEGIN CERTIFICATE----") {
-                return match parse::certificate(&bytes) {
+                return match certificate::parse(&bytes) {
                     Ok(cert) => Ok(leaf::Leaf::Certificate(path_buf, cert)),
                     Err(error) => Ok(leaf::Leaf::Error(path_buf, error)),
                 };
