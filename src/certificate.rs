@@ -4,40 +4,31 @@ use time;
 #[derive(Debug)]
 pub struct Certificate {
     pub subject: String,
-    pub validity: Vec<time::Tm>,
+    pub expires: time::Tm,
 }
 
 impl Certificate {
-    pub fn new() -> Self {
-        Self {
-            subject: "".into(),
-            validity: vec![],
-        }
+    pub fn new(subject: String, expires: time::Tm) -> Self {
+        Self { subject, expires }
     }
 
     pub fn is_expired(&self) -> bool {
-        if self.validity.len() < 2 {
-            return true;
-        }
-        time::now_utc() > self.validity[1]
+        time::now_utc() > self.expires
     }
 
     fn format_expiration(&self) -> String {
-        if self.validity.len() < 2 {
-            return "?".into();
-        }
-        match time::strftime("%Y-%m-%d", &self.validity[1]) {
+        match time::strftime("%Y-%m-%d", &self.expires) {
             Ok(date) => date,
             Err(_) => "?".into(),
         }
     }
 }
-
-impl Default for Certificate {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+//
+// impl Default for Certificate {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 impl fmt::Display for Certificate {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {

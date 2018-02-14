@@ -5,6 +5,7 @@ use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
 use x509_parser;
+use time;
 use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
                  parse_der_octetstring, DerObject, DerObjectContent, DerTag};
 use der_parser::oid::Oid;
@@ -442,19 +443,47 @@ fn parse_certificate_request(asn1_bytes: &[u8]) {
 //         Err(error) => Err(format!("PEM error: {:?}", error)),
 //     }
 // }
+// fn stringify (ppe: nom_pem::PemParsingError) -> String {
+//     format!("{:?}", ppe)
+// }
+
 pub fn certificate(bytes: &[u8]) -> Result<Certificate, String> {
+    let block: nom_pem::Block =
+        // nom_pem::decode_block(bytes).map_err(stringify)?;
+        nom_pem::decode_block(bytes).map_err(|ppe| format!("{:?}", ppe))?;
+    let xcert = x509_parser::x509_parser(&block.data)
+        .to_full_result()
+        .map_err(|nie| format!("{:?}", nie))?;
+    let tbs = xcert.tbs_certificate().map_err(|nie| format!("{:?}", nie))?;
+    let tm_vec = xcert
+        .tbs_certificate()
+        .and_then(|tbs| tbs.validity())
+        // .and_then(|tm_vec| {
+        //     tm_vec
+        //         .iter()
+        //         .nth(1)
+        // })
+        .map_err(|xe: x509_parser::error::X509Error| format!("{:?}", xe))?;
+    let expires: Result<time::Tm, String> =
+        tm_vec.into_iter().nth(1).ok_or("Validity Error".into());
+    // let expires = expires?;
+    // .map_err(|ppe| format!("{:?}", ppe))?;
+    return Ok(Certificate::new(tbs.subject().to_string(), expires?));
+
+    // return Err("HEY".into());
+    /*
     match nom_pem::decode_block(bytes) {
         Ok(block) => match x509_parser::x509_parser(&block.data) {
-            IResult::Done(_unparsed_suffix, x509) => {
-                let tbs = x509.tbs_certificate().unwrap();
-                let mut cert: Certificate = Default::default();
-                cert.subject = format!("{}", tbs.subject());
-                cert.validity = tbs.validity().unwrap();
-                Ok(cert)
-            }
+            IResult::Done(_unparsed_suffix, xcert) => match xcert.tbs_certificate() {
+                Ok(tbs) => {
+
+                    Ok(Certificate2 = Certificate2::new(xcert.subject(), tbs.validity.iter.nth(1)))
+                },
+                X509Error(error) => Err(format!("{}", error)),
+            },
             IResult::Error(error) => Err(format!("{}", error)),
             IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
         },
         Err(error) => Err(format!("PEM error: {:?}", error)),
     }
-}
+    */}
