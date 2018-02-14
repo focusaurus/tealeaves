@@ -189,34 +189,6 @@ named!(
     )
 );
 
-named!(
-    nom_ed25519<(&[u8])>,
-    do_parse!(cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (&point))
-);
-
-named!(
-    nom_rsa<(&[u8])>,
-    do_parse!(
-        cipher_name: length_bytes!(be_u32) >> _ver_or_exp: length_bytes!(be_u32)
-            >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
-    )
-);
-
-named!(
-    nom_dss<(&[u8])>,
-    do_parse!(
-        cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32) >> (&p_integer[1..])
-    )
-);
-
-named!(
-    nom_ecdsa<(&[u8], &[u8])>,
-    do_parse!(
-        key_type: length_bytes!(be_u32) >> curve: length_bytes!(be_u32)
-            >> point: length_bytes!(be_u32) >> (&curve, &point)
-    )
-);
-
 fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_openssh_key_v1_private(bytes) {
         IResult::Done(_tail, (cipher_name, key_bytes)) => {
