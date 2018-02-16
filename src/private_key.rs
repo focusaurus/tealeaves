@@ -1,11 +1,8 @@
-use base64;
-use certificate::Certificate;
 use der_parser::oid::Oid;
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
-use ssh_key::{Algorithm, SshKey, peek_algorithm};
-use std::fmt;
+use ssh_key::{peek_algorithm, Algorithm, SshKey};
 use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
                  parse_der_octetstring, DerObject, DerObjectContent, DerTag};
 

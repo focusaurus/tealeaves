@@ -1,17 +1,5 @@
 use std::fmt;
-use base64;
-use certificate::Certificate;
-use der_parser::oid::Oid;
-use nom_pem;
-use nom_pem::{HeaderEntry, ProcTypeType};
 use nom::IResult;
-use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
-                 parse_der_octetstring, DerObject, DerObjectContent, DerTag};
-
-// My code does not directly use these names. Why do I need to `use` them?
-use der_parser::der_read_element_header;
-
-// My code does not directly use these names. Why do I need to `use` them?
 use nom::{Err, ErrorKind, be_u32};
 
 #[derive(PartialEq, Eq, Debug)]

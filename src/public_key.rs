@@ -1,6 +1,6 @@
 use base64;
 use nom::IResult;
-use ssh_key::{SshKey, peek_algorithm};
+use ssh_key::{peek_algorithm, SshKey};
 
 named!(space_sep, is_a_s!(" \t"));
 named!(value, is_not_s!(" \t"));
