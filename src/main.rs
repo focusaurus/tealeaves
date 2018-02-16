@@ -55,8 +55,8 @@ fn tealeaves() -> io::Result<()> {
 
     // Split into public keys and all other variants
     // so we can match public/private pairs together
-    let (publics, others): (Vec<Leaf>, Vec<Leaf>) = leaves.into_iter().partition(|i| match i {
-        &Leaf::SshKey(ref _pb, ref key) => key.is_public,
+    let (publics, others): (Vec<Leaf>, Vec<Leaf>) = leaves.into_iter().partition(|i| match *i {
+        Leaf::SshKey(ref _pb, ref key) => key.is_public,
         _ => false,
     });
 
@@ -66,8 +66,8 @@ fn tealeaves() -> io::Result<()> {
             Leaf::SshKey(ref _pb, ref key) => {
                 print!("{}", leaf);
                 if !key.is_public {
-                    let pair = publics.iter().find(|pub_leaf| match *pub_leaf {
-                        &Leaf::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(&key),
+                    let pair = publics.iter().find(|pub_leaf| match *(*pub_leaf) {
+                        Leaf::SshKey(ref _pb, ref pub_key) => pub_key.is_pair(key),
                         _ => false,
                     });
                     match pair {
@@ -77,7 +77,7 @@ fn tealeaves() -> io::Result<()> {
                             }
                             _ => println!("\n"),
                         },
-                        _ => println!(""),
+                        _ => println!(),
                     }
                 }
             }

@@ -13,11 +13,11 @@ pub enum Algorithm {
 
 impl fmt::Display for Algorithm {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Algorithm::Ed25519(_) => write!(out, "ed25519"),
-            &Algorithm::Rsa(_) => write!(out, "rsa"),
-            &Algorithm::Ecdsa(ref curve, _) => write!(out, "ecdsa, curve {}", curve),
-            &Algorithm::Dsa(_) => write!(out, "dsa"),
+        match *self {
+            Algorithm::Ed25519(_) => write!(out, "ed25519"),
+            Algorithm::Rsa(_) => write!(out, "rsa"),
+            Algorithm::Ecdsa(ref curve, _) => write!(out, "ecdsa, curve {}", curve),
+            Algorithm::Dsa(_) => write!(out, "dsa"),
             _ => write!(out, "unknown"),
         }
     }
@@ -67,7 +67,7 @@ impl SshKey {
     }
 }
 
-fn bit_count(field: &Vec<u8>) -> usize {
+fn bit_count(field: &[u8]) -> usize {
     field.len() * 8
 }
 
@@ -113,7 +113,7 @@ impl Default for SshKey {
 
 named!(
     nom_ed25519<(&[u8])>,
-    do_parse!(cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (&point))
+    do_parse!(cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (point))
 );
 
 named!(
@@ -135,7 +135,7 @@ named!(
     nom_ecdsa<(&[u8], &[u8])>,
     do_parse!(
         key_type: length_bytes!(be_u32) >> curve: length_bytes!(be_u32)
-            >> point: length_bytes!(be_u32) >> (&curve, &point)
+            >> point: length_bytes!(be_u32) >> (curve, point)
     )
 );
 
@@ -168,28 +168,28 @@ pub fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm,
         return Ok(algorithm);
     }
     if algorithm_name.starts_with(b"ssh-ed25519") {
-        return match nom_ed25519(&key_bytes) {
+        return match nom_ed25519(key_bytes) {
             IResult::Done(_tail, point) => Ok(Algorithm::Ed25519(point.to_owned())),
             IResult::Error(_error) => Err("Parse error".into()),
             IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ssh-rsa") {
-        return match nom_rsa(&key_bytes) {
+        return match nom_rsa(key_bytes) {
             IResult::Done(_tail, modulus) => Ok(Algorithm::Rsa(modulus.to_owned())),
             IResult::Error(_error) => Err("Parse error".into()),
             IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ssh-dss") {
-        return match nom_dss(&key_bytes) {
+        return match nom_dss(key_bytes) {
             IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
             IResult::Error(_error) => Err("Parse error".into()),
             IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp") {
-        return match nom_ecdsa(&key_bytes) {
+        return match nom_ecdsa(key_bytes) {
             IResult::Done(_tail, (curve, point)) => Ok(Algorithm::Ecdsa(
                 String::from_utf8_lossy(curve).into(),
                 point.to_owned(),

@@ -36,7 +36,7 @@ fn dsa_private(input: &[u8]) -> Result<Algorithm, String> {
             let p_integer = der_objects[1].content.as_slice().unwrap();
             // strip leading null byte
             let p_integer = &p_integer[1..];
-            return Ok(Algorithm::Dsa(p_integer.to_owned()));
+            Ok(Algorithm::Dsa(p_integer.to_owned()))
         }
         IResult::Error(error) => Err(format!("{}", error)),
         IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
@@ -160,7 +160,7 @@ fn ecdsa_private(input: &[u8]) -> Result<Algorithm, String> {
             if oid == &Oid::from(&[0u64, 6, 5, 43, 132, 0, 35]) {
                 return Ok(Algorithm::Ecdsa("nistp521".into(), point));
             }
-            return Ok(Algorithm::Unknown);
+            Ok(Algorithm::Unknown)
         }
         IResult::Error(error) => Err(format!("{}", error)),
         IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
@@ -191,7 +191,7 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
         IResult::Done(_tail, (cipher_name, key_bytes)) => {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_encrypted = cipher_name != b"none";
-            match peek_algorithm(ssh_key.is_encrypted, &key_bytes) {
+            match peek_algorithm(ssh_key.is_encrypted, key_bytes) {
                 Ok(algorithm) => {
                     ssh_key.algorithm = algorithm;
                     Ok(ssh_key)

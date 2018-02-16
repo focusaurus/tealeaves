@@ -25,19 +25,19 @@ impl Certificate {
     }
 
     fn format_expiration(&self) -> String {
-        time::strftime("%Y-%m-%d", &self.expires).unwrap_or("?".into())
+        time::strftime("%Y-%m-%d", &self.expires).unwrap_or_else(|_| "?".into())
     }
 }
 
 impl fmt::Display for Certificate {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
-        let host = self.subject.rsplit("=").nth(0).unwrap_or("?");
+        let host = self.subject.rsplit('=').nth(0).unwrap_or("?");
         output.push_str(&format!("x509 TLS Certificate (host {})", host));
         if self.is_expired() {
-            output.push_str(&format!("\n\t🚨 expired "));
+            output.push_str("\n\t🚨 expired ");
         } else {
-            output.push_str(&format!("\n\t✓ expires "));
+            output.push_str("\n\t✓ expires ");
         }
         output.push_str(&format!("{}", self.format_expiration()));
         // http://www.alvestrand.no/objectid/1.2.840.113549.1.1.5.html
@@ -65,12 +65,14 @@ pub fn parse(bytes: &[u8]) -> Result<Certificate, String> {
         .tbs_certificate()
         .and_then(|tbs| tbs.validity())
         .map_err(strerr)?;
-    let expires: Result<time::Tm, String> =
-        tm_vec.into_iter().nth(1).ok_or("Validity Error".into());
+    let expires: Result<time::Tm, String> = tm_vec
+        .into_iter()
+        .nth(1)
+        .ok_or_else(|| "Validity Error".into());
     let algorithm = xcert.signature_algorithm().map_err(strerr);
-    return Ok(Certificate::new(
+    Ok(Certificate::new(
         tbs.subject().to_string(),
         expires?,
         algorithm?.algorithm.to_string(),
-    ));
+    ))
 }

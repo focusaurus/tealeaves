@@ -15,7 +15,7 @@ fn scan(path: &str) -> Leaf {
 
 #[test]
 fn rsa_1024_private_passphrase_scan() {
-    match scan(&"./files/ssh-rsa-2048-b-private-key-passphrase.pem") {
+    match scan("./files/ssh-rsa-2048-b-private-key-passphrase.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             assert_eq!(ssh_key.algorithm, Algorithm::Rsa(test_vec(0)));
             assert_eq!(ssh_key.is_public, false);
@@ -28,7 +28,7 @@ fn rsa_1024_private_passphrase_scan() {
 
 #[test]
 fn dsa_1024_private_clear() {
-    match scan(&"./files/ssh-dsa-1024-a-private-key.pem") {
+    match scan("./files/ssh-dsa-1024-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             match ssh_key.algorithm {
                 Algorithm::Dsa(p_integer) => assert_eq!(p_integer.len() * 8, 1024),
@@ -44,7 +44,7 @@ fn dsa_1024_private_clear() {
 
 #[test]
 fn dsa_1024_private_passphrase() {
-    match scan(&"./files/ssh-dsa-1024-b-private-key-passphrase.pem") {
+    match scan("./files/ssh-dsa-1024-b-private-key-passphrase.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             assert_eq!(ssh_key.algorithm, Algorithm::Dsa(vec![]));
             assert_eq!(ssh_key.is_public, false);
@@ -57,7 +57,7 @@ fn dsa_1024_private_passphrase() {
 
 #[test]
 fn ecdsa_256_private_clear() {
-    match scan(&"files/ssh-ecdsa-256-a-private-key.pem") {
+    match scan("files/ssh-ecdsa-256-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             match ssh_key.algorithm {
                 Algorithm::Ecdsa(ref curve, ref point) => {
@@ -76,7 +76,7 @@ fn ecdsa_256_private_clear() {
 
 #[test]
 fn ed25519_private_clear() {
-    match scan(&"./files/ssh-ed25519-a-private-key.pem") {
+    match scan("./files/ssh-ed25519-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             match ssh_key.algorithm {
                 Algorithm::Ed25519(point) => assert_eq!(point.len(), 32),
@@ -92,7 +92,7 @@ fn ed25519_private_clear() {
 
 #[test]
 fn ed25519_private_passphrase() {
-    match scan(&"./files/ssh-ed25519-b-private-key-passphrase.pem") {
+    match scan("./files/ssh-ed25519-b-private-key-passphrase.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             assert_eq!(ssh_key.algorithm, Algorithm::Ed25519(vec![]));
             assert_eq!(ssh_key.is_public, false);
@@ -105,7 +105,7 @@ fn ed25519_private_passphrase() {
 
 #[test]
 fn rsa_1024_private_clear() {
-    match scan(&"./files/ssh-rsa-1024-a-private-key.pem") {
+    match scan("./files/ssh-rsa-1024-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             match ssh_key.algorithm {
                 Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 1024),
@@ -121,7 +121,7 @@ fn rsa_1024_private_clear() {
 
 #[test]
 fn rsa_2048_private_clear() {
-    match scan(&"./files/ssh-rsa-2048-a-private-key.pem") {
+    match scan("./files/ssh-rsa-2048-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             match ssh_key.algorithm {
                 Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 2048),
@@ -137,7 +137,7 @@ fn rsa_2048_private_clear() {
 
 #[test]
 fn rsa_4096_private_clear() {
-    match scan(&"./files/ssh-rsa-4096-a-private-key.pem") {
+    match scan("./files/ssh-rsa-4096-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {
             match ssh_key.algorithm {
                 Algorithm::Rsa(modulus) => assert_eq!(modulus.len() * 8, 4096),

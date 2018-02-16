@@ -20,11 +20,8 @@ fn wrap() -> io::Result<()> {
 }
 
 fn main() {
-    match wrap() {
-        Err(error) => {
-            eprintln!("{}", error);
-            std::process::exit(10);
-        }
-        Ok(_) => (),
+    if let Err(error) = wrap() {
+        eprintln!("{}", error);
+        std::process::exit(10);
     }
 }
