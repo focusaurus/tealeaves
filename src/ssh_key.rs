@@ -1,6 +1,6 @@
-use std::fmt;
+use nom::be_u32;
 use nom::IResult;
-use nom::{Err, ErrorKind, be_u32};
+use std::fmt;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Algorithm {
