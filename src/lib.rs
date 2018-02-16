@@ -26,6 +26,7 @@ extern crate der_parser;
 #[macro_use(error_if)]
 extern crate rusticata_macros;
 
+#[allow(decimal_literal_representation)]
 pub fn scan<
     P: Permissions + PermissionsExt,
     M: Metadata<Permissions = P>,

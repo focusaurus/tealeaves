@@ -139,7 +139,7 @@ fn pem_long_field_gets_detected() {
     let valid_prefix = b"openssh-key-v1\0";
     // field length is above 4096 safe limit we will read
     // 4097 length:  00 00 10 01 in hex
-    let bogus_length = &[0, 0, 0b00000010, 1][..];
+    let bogus_length = &[0, 0, 0b0000_0010, 1][..];
     let base64 = base64::encode(&[valid_prefix, bogus_length].concat());
     pem.write_all(b"-----BEGIN OPENSSH PRIVATE KEY-----\n")
         .unwrap();

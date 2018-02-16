@@ -136,6 +136,7 @@ fn rsa_2048_private_clear() {
 }
 
 #[test]
+#[allow(decimal_literal_representation)]
 fn rsa_4096_private_clear() {
     match scan("./files/ssh-rsa-4096-a-private-key.pem") {
         Leaf::SshKey(_path, ssh_key) => {

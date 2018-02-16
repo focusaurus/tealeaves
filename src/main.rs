@@ -3,7 +3,7 @@ extern crate structopt;
 #[macro_use(StructOpt)]
 extern crate structopt_derive;
 extern crate tealeaves;
-use std::{env, fs, io, process};
+use std::{env, fs, io};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tealeaves::leaf::Leaf;
@@ -14,6 +14,8 @@ struct Opt {
     #[structopt(help = "Paths to files/directories of interest", parse(from_os_str))]
     paths: Vec<PathBuf>,
 }
+
+type LeafResults = Vec<Result<Leaf, String>>;
 
 fn tealeaves() -> io::Result<()> {
     let opt = Opt::from_args();
@@ -39,15 +41,13 @@ fn tealeaves() -> io::Result<()> {
         paths.iter().map(|p| tealeaves::scan(&fs, &p)).collect();
 
     // Split the results apart into Err and Ok
-    let (errors, oks): (Vec<Result<Leaf, String>>, Vec<Result<Leaf, String>>) =
-        results.into_iter().partition(|r| r.is_err());
+    let (errors, oks): (LeafResults, LeafResults) = results.into_iter().partition(|r| r.is_err());
 
     // Print the errors
     for result_error in errors {
-        match result_error {
-            Err(message) => eprintln!("{}", message),
-            _ => (),
-        };
+        if let Err(message) = result_error {
+            eprintln!("{}", message);
+        }
     }
 
     // Unwrap all the Oks so we don't need to deal with Result any more
@@ -94,11 +94,8 @@ fn tealeaves() -> io::Result<()> {
 }
 
 fn main() {
-    match tealeaves() {
-        Ok(_) => {}
-        Err(error) => {
-            eprintln!("{}", error);
-            process::exit(10);
-        }
+    if let Err(error) = tealeaves() {
+        eprintln!("{}", error);
+        std::process::exit(10);
     }
 }
