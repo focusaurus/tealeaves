@@ -38,12 +38,11 @@ pub fn scan<
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
     let res = fs.metadata(path);
-    // Todo match here instead of is_err
-    if res.is_err() {
+    if let Err(err) = res {
         return Err(format!(
             "Error reading {}: {}",
             path.as_ref().display(),
-            res.err().unwrap()
+            err
         ));
     }
     let meta = res.unwrap();
