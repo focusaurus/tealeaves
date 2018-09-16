@@ -1,16 +1,16 @@
 use der_parser::oid::Oid;
+use der_parser::{
+    der_read_element_content_as, parse_der_implicit, parse_der_integer, parse_der_octetstring,
+    DerObject, DerObjectContent, DerTag, DER_OBJ_TOOSHORT,
+};
+use nom;
+use nom::IResult;
 use nom_pem;
 use nom_pem::{HeaderEntry, ProcTypeType};
-use nom::IResult;
 use ssh_key::{peek_algorithm, Algorithm, SshKey};
-use der_parser::{der_read_element_content_as, parse_der_implicit, parse_der_integer,
-                 parse_der_octetstring, DerObject, DerObjectContent, DerTag};
 
 // My code does not directly use these names. Why do I need to `use` them?
-use der_parser::der_read_element_header;
-
-// My code does not directly use these names. Why do I need to `use` them?
-use nom::{Err, ErrorKind, be_u32};
+use nom::be_u32;
 
 fn is_encrypted(headers: &[HeaderEntry]) -> bool {
     headers.iter().any(|header| match *header {
@@ -30,7 +30,7 @@ fn dsa_private(input: &[u8]) -> Result<Algorithm, String> {
         parse_der_integer, // public_key
         parse_der_integer, // private_key
     ) {
-        IResult::Done(_unparsed_suffix, der) => {
+        Ok((_unparsed_suffix, der)) => {
             assert_eq!(_unparsed_suffix.len(), 0);
             let der_objects = der.as_sequence().unwrap();
             let p_integer = der_objects[1].content.as_slice().unwrap();
@@ -38,8 +38,8 @@ fn dsa_private(input: &[u8]) -> Result<Algorithm, String> {
             let p_integer = &p_integer[1..];
             Ok(Algorithm::Dsa(p_integer.to_owned()))
         }
-        IResult::Error(error) => Err(format!("{}", error)),
-        IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
+        Err(nom::Err::Error(error)) | Err(nom::Err::Failure(error)) => Err(format!("{:?}", error)),
+        Err(nom::Err::Incomplete(needed)) => Err(format!("Incomplete parse: {:?}", needed)),
     }
 }
 
@@ -74,7 +74,7 @@ fn rsa_private(input: &[u8]) -> Result<Algorithm, String> {
         parse_der_integer,
         parse_der_integer,
     ) {
-        IResult::Done(_unparsed_suffix, der) => {
+        Ok((_unparsed_suffix, der)) => {
             assert_eq!(_unparsed_suffix.len(), 0);
             let der_objects = der.as_sequence().unwrap();
             // modulus (n) is at index 1
@@ -88,23 +88,17 @@ fn rsa_private(input: &[u8]) -> Result<Algorithm, String> {
             let modulus = modulus[1..].to_owned();
             Ok(Algorithm::Rsa(modulus))
         }
-        IResult::Error(error) => {
-            // eprintln!("{}", error);
-            Err(format!("{}", error))
-        }
-        IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
+        Err(nom::Err::Error(error)) => Err(format!("{:?}", error)),
+        Err(nom::Err::Failure(error)) => Err(format!("{:?}", error)),
+        Err(nom::Err::Incomplete(needed)) => Err(format!("Incomplete parse: {:?}", needed)),
     }
 }
 
-fn der_read_oid_content(i: &[u8], _tag: u8, len: usize) -> IResult<&[u8], DerObjectContent, u32> {
+fn der_read_oid_content(i: &[u8], _tag: u8, len: usize) -> IResult<&[u8], DerObjectContent> {
     der_read_element_content_as(i, DerTag::Oid as u8, len)
 }
 
-fn der_read_bitstring_content(
-    i: &[u8],
-    _tag: u8,
-    len: usize,
-) -> IResult<&[u8], DerObjectContent, u32> {
+fn der_read_bitstring_content(i: &[u8], _tag: u8, len: usize) -> IResult<&[u8], DerObjectContent> {
     der_read_element_content_as(i, DerTag::BitString as u8, len)
 }
 
@@ -141,7 +135,7 @@ fn ecdsa_private(input: &[u8]) -> Result<Algorithm, String> {
         parse_oid,
         parse_bitstring,
     ) {
-        IResult::Done(_unparsed_suffix, der) => {
+        Ok((_unparsed_suffix, der)) => {
             assert_eq!(_unparsed_suffix.len(), 0);
             let seq = der.as_sequence().unwrap();
             let oid = seq[2].content.as_context_specific().unwrap();
@@ -162,8 +156,9 @@ fn ecdsa_private(input: &[u8]) -> Result<Algorithm, String> {
             }
             Ok(Algorithm::Unknown)
         }
-        IResult::Error(error) => Err(format!("{}", error)),
-        IResult::Incomplete(needed) => Err(format!("Incomplete parse: {:?}", needed)),
+        Err(nom::Err::Failure(error)) => Err(format!("{:?}", error)),
+        Err(nom::Err::Error(error)) => Err(format!("{:?}", error)),
+        Err(nom::Err::Incomplete(needed)) => Err(format!("Incomplete parse: {:?}", needed)),
     }
 }
 
@@ -179,16 +174,19 @@ string	publickey2
 named!(
     nom_openssh_key_v1_private<(&[u8], &[u8])>,
     do_parse!(
-        tag!(b"openssh-key-v1\0") >> cipher_name: length_bytes!(be_u32)
-            >> kdf_name: length_bytes!(be_u32) >> kdf_options: length_bytes!(be_u32)
-            >> key_count: tag!(&[0, 0, 0, 1]) >> key: length_bytes!(be_u32)
+        tag!(b"openssh-key-v1\0")
+            >> cipher_name: length_bytes!(be_u32)
+            >> kdf_name: length_bytes!(be_u32)
+            >> kdf_options: length_bytes!(be_u32)
+            >> key_count: tag!(&[0, 0, 0, 1])
+            >> key: length_bytes!(be_u32)
             >> (cipher_name, key)
     )
 );
 
 fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_openssh_key_v1_private(bytes) {
-        IResult::Done(_tail, (cipher_name, key_bytes)) => {
+        Ok((_tail, (cipher_name, key_bytes))) => {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_encrypted = cipher_name != b"none";
             match peek_algorithm(ssh_key.is_encrypted, key_bytes) {
@@ -199,8 +197,8 @@ fn openssh_key_v1_private(bytes: &[u8]) -> Result<SshKey, String> {
                 Err(message) => Err(message),
             }
         }
-        IResult::Error(_error) => Err("Parse error".into()),
-        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        Err(nom::Err::Error(_error)) | Err(nom::Err::Failure(_error)) => Err("Parse error".into()),
+        Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
     }
 }
 

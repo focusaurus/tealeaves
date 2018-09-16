@@ -57,22 +57,11 @@ where
 
 pub fn parse(bytes: &[u8]) -> Result<Certificate, String> {
     let block: nom_pem::Block = nom_pem::decode_block(bytes).map_err(strerr)?;
-    let xcert = x509_parser::x509_parser(&block.data)
-        .to_full_result()
-        .map_err(|nie| format!("{:?}", nie))?;
-    let tbs = xcert.tbs_certificate().map_err(strerr)?;
-    let tm_vec = xcert
-        .tbs_certificate()
-        .and_then(|tbs| tbs.validity())
-        .map_err(strerr)?;
-    let expires: Result<time::Tm, String> = tm_vec
-        .into_iter()
-        .nth(1)
-        .ok_or_else(|| "Validity Error".into());
-    let algorithm = xcert.signature_algorithm().map_err(strerr);
+    let (_x, xcert) = x509_parser::x509_parser(&block.data).map_err(|nie| format!("{:?}", nie))?;
+    let tbs = xcert.tbs_certificate;
     Ok(Certificate::new(
-        tbs.subject().to_string(),
-        expires?,
-        algorithm?.algorithm.to_string(),
+        tbs.subject.to_string(),
+        tbs.validity.not_after,
+        xcert.signature_algorithm.algorithm.to_string(),
     ))
 }

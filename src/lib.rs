@@ -10,14 +10,27 @@ pub mod private_key;
 pub mod public_key;
 pub mod ssh_key;
 pub use leaf::Leaf;
-use rsfs::{GenFS, Metadata};
-use rsfs::*;
 use rsfs::unix_ext::*;
+use rsfs::*;
+use rsfs::{GenFS, Metadata};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-#[macro_use(call, do_parse, error_position, is_a_s, is_a, is_not_s, is_not, length_bytes,
-            length_data, map, named, tag, take)]
+#[macro_use(
+    call,
+    do_parse,
+    is_a_s,
+    is_a,
+    is_not_s,
+    is_not,
+    length_bytes,
+    length_data,
+    map,
+    named,
+    tag,
+    take,
+    error_position
+)]
 extern crate nom;
 
 #[macro_use(parse_der_sequence_defined, parse_der_defined, fold_parsers)]
@@ -26,7 +39,6 @@ extern crate der_parser;
 #[macro_use(error_if)]
 extern crate rusticata_macros;
 
-#[allow(decimal_literal_representation)]
 pub fn scan<
     P: Permissions + PermissionsExt,
     M: Metadata<Permissions = P>,

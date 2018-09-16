@@ -1,5 +1,5 @@
+use nom;
 use nom::be_u32;
-use nom::IResult;
 use std::fmt;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -119,8 +119,10 @@ named!(
 named!(
     nom_rsa<(&[u8])>,
     do_parse!(
-        cipher_name: length_bytes!(be_u32) >> _ver_or_exp: length_bytes!(be_u32)
-            >> modulus: length_bytes!(be_u32) >> (&modulus[1..])
+        cipher_name: length_bytes!(be_u32)
+            >> _ver_or_exp: length_bytes!(be_u32)
+            >> modulus: length_bytes!(be_u32)
+            >> (&modulus[1..])
     )
 );
 
@@ -134,8 +136,10 @@ named!(
 named!(
     nom_ecdsa<(&[u8], &[u8])>,
     do_parse!(
-        key_type: length_bytes!(be_u32) >> curve: length_bytes!(be_u32)
-            >> point: length_bytes!(be_u32) >> (curve, point)
+        key_type: length_bytes!(be_u32)
+            >> curve: length_bytes!(be_u32)
+            >> point: length_bytes!(be_u32)
+            >> (curve, point)
     )
 );
 
@@ -169,33 +173,33 @@ pub fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm,
     }
     if algorithm_name.starts_with(b"ssh-ed25519") {
         return match nom_ed25519(key_bytes) {
-            IResult::Done(_tail, point) => Ok(Algorithm::Ed25519(point.to_owned())),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+            Ok((_tail, point)) => Ok(Algorithm::Ed25519(point.to_owned())),
+            Err(nom::Err::Error(_e)) | Err(nom::Err::Failure(_e)) => Err("Parse error".into()),
+             Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ssh-rsa") {
         return match nom_rsa(key_bytes) {
-            IResult::Done(_tail, modulus) => Ok(Algorithm::Rsa(modulus.to_owned())),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+            Ok((_tail, modulus)) => Ok(Algorithm::Rsa(modulus.to_owned())),
+            Err(nom::Err::Error(_e)) | Err(nom::Err::Failure(_e)) => Err("Parse error".into()),
+            Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ssh-dss") {
         return match nom_dss(key_bytes) {
-            IResult::Done(_tail, p_integer) => Ok(Algorithm::Dsa(p_integer.to_owned())),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+            Ok((_tail, p_integer)) => Ok(Algorithm::Dsa(p_integer.to_owned())),
+            Err(nom::Err::Error(_e)) | Err(nom::Err::Failure(_e)) => Err("Parse error".into()),
+            Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ecdsa-sha2-nistp") {
         return match nom_ecdsa(key_bytes) {
-            IResult::Done(_tail, (curve, point)) => Ok(Algorithm::Ecdsa(
+            Ok((_tail, (curve, point))) => Ok(Algorithm::Ecdsa(
                 String::from_utf8_lossy(curve).into(),
                 point.to_owned(),
             )),
-            IResult::Error(_error) => Err("Parse error".into()),
-            IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+            Err(nom::Err::Error(_e)) | Err(nom::Err::Failure(_e)) => Err("Parse error".into()),
+            Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
         };
     }
     Ok(algorithm)

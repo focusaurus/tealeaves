@@ -1,19 +1,18 @@
 [package]
 name = "tealeaves"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Peter Lyons <pete@peterlyons.com>"]
 
 [dependencies]
 base64 = "0.6.0"
-der-parser = "0.4.4"
-nom = "3.2.1"
-nom_pem = { path = "../nom_pem" }
-# nom_pem = "1.0.4"
+der-parser = "1.0.0"
+nom = "4.0.0"
+nom_pem = "4.0.0"
 rsfs = "0.4.1"
-rusticata-macros = "0.3.3"    # Helper macros for Rusticata
+rusticata-macros = "1.0.0"    # Helper macros for Rusticata
 hex = "0.3.1"             # Encoding and decoding data into/from hexadecimal representation.
 # x509-parser = { path = "../x509-parser" }
-x509-parser = "0.1.0"     # Parser for BER/DER encoding data
+x509-parser = "0.3.0"     # Parser for BER/DER encoding data
 time = "0.1"
 structopt = "0.1.7"           # Parse command line argument by defining a struct.
 structopt-derive = "0.1.6"    # Parse command line argument by defining a struct, derive crate.

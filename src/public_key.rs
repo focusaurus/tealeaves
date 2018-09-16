@@ -1,20 +1,24 @@
 use base64;
-use nom::IResult;
 use ssh_key::{peek_algorithm, SshKey};
+use nom;
 
 named!(space_sep, is_a_s!(" \t"));
 named!(value, is_not_s!(" \t"));
 named!(
     nom_public_key<(&[u8], &[u8], &[u8])>,
     do_parse!(
-        algorithm: value >> separator: space_sep >> payload: value >> separator: space_sep
-            >> comment: is_not_s!("\r\n") >> (algorithm, payload, comment)
+        algorithm: value
+            >> separator: space_sep
+            >> payload: value
+            >> separator: space_sep
+            >> comment: is_not_s!("\r\n")
+            >> (algorithm, payload, comment)
     )
 );
 
 pub fn parse(bytes: &[u8]) -> Result<SshKey, String> {
     match nom_public_key(bytes) {
-        IResult::Done(_input, (_label, payload, comment)) => {
+        Ok((_remaining, (_label, payload, comment))) => {
             let mut ssh_key: SshKey = Default::default();
             ssh_key.is_public = true;
             ssh_key.comment = Some(String::from_utf8_lossy(comment).into_owned());
@@ -29,7 +33,7 @@ pub fn parse(bytes: &[u8]) -> Result<SshKey, String> {
                 Err(_) => Err("Invalid Base64".into()),
             }
         }
-        IResult::Error(_error) => Err("Parse error".into()),
-        IResult::Incomplete(_needed) => Err("Didn't fully parse".into()),
+        Err(nom::Err::Error(_e)) | Err(nom::Err::Failure(_e)) => Err("Parse error".into()),
+        Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
     }
 }
