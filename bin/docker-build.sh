@@ -14,20 +14,6 @@ IFS="$(printf "\n\t")"
 # ---- End unofficial bash strict mode boilerplate
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-cat <<EOF
-
-# FROM nrdmn/clippy:0.0.197
-# ARG USER
-# ARG USER_ID=1000
-# ARG GROUP_ID=1000
-# RUN addgroup --gid \${GROUP_ID} \${USER} || true
-# RUN adduser --disabled-password --gid \${GROUP_ID} --uid \${USER_ID} --gecos \${USER} \${USER} || true
-# WORKDIR /opt
-# ENV PATH=/usr/local/bin:/usr/local/cargo/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/target/debug
-# CMD ["bash"]
-
-EOF
-
 # The backslash escaped variables below are so bash doesn't immediately
 # replace them with their environment variable values before passing to docker
 dockerfile=$(
@@ -40,6 +26,7 @@ ARG GROUP_ID=1000
 RUN addgroup --gid \${GROUP_ID} \${USER}; \
   adduser --disabled-password --gid \${GROUP_ID} --uid \${USER_ID} --gecos \${USER} \${USER}
 USER ${USER}
+WORKDIR /opt
 ENV \
   PATH=/home/${USER}/.cargo/bin:/opt/target/debug:\${PATH}
 RUN set -eux; \
@@ -50,7 +37,6 @@ RUN set -eux; \
   rustup component add clippy-preview; \
   rm rustup-init; \
   rustup component add clippy-preview rustfmt-preview;
-WORKDIR /opt
 EOF
 )
 # chown -R \${USER}:\${GROUP_ID} /opt/target/registry;
