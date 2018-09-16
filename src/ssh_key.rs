@@ -113,13 +113,13 @@ impl Default for SshKey {
 
 named!(
     nom_ed25519<(&[u8])>,
-    do_parse!(cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (point))
+    do_parse!(_cipher_name: length_bytes!(be_u32) >> point: length_bytes!(be_u32) >> (point))
 );
 
 named!(
     nom_rsa<(&[u8])>,
     do_parse!(
-        cipher_name: length_bytes!(be_u32)
+        _cipher_name: length_bytes!(be_u32)
             >> _ver_or_exp: length_bytes!(be_u32)
             >> modulus: length_bytes!(be_u32)
             >> (&modulus[1..])
@@ -129,14 +129,14 @@ named!(
 named!(
     nom_dss<(&[u8])>,
     do_parse!(
-        cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32) >> (&p_integer[1..])
+        _cipher_name: length_bytes!(be_u32) >> p_integer: length_bytes!(be_u32) >> (&p_integer[1..])
     )
 );
 
 named!(
     nom_ecdsa<(&[u8], &[u8])>,
     do_parse!(
-        key_type: length_bytes!(be_u32)
+        _key_type: length_bytes!(be_u32)
             >> curve: length_bytes!(be_u32)
             >> point: length_bytes!(be_u32)
             >> (curve, point)
@@ -175,7 +175,7 @@ pub fn peek_algorithm(is_encrypted: bool, key_bytes: &[u8]) -> Result<Algorithm,
         return match nom_ed25519(key_bytes) {
             Ok((_tail, point)) => Ok(Algorithm::Ed25519(point.to_owned())),
             Err(nom::Err::Error(_e)) | Err(nom::Err::Failure(_e)) => Err("Parse error".into()),
-             Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
+            Err(nom::Err::Incomplete(_needed)) => Err("Didn't fully parse".into()),
         };
     }
     if algorithm_name.starts_with(b"ssh-rsa") {

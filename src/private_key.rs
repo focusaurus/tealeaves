@@ -176,9 +176,9 @@ named!(
     do_parse!(
         tag!(b"openssh-key-v1\0")
             >> cipher_name: length_bytes!(be_u32)
-            >> kdf_name: length_bytes!(be_u32)
-            >> kdf_options: length_bytes!(be_u32)
-            >> key_count: tag!(&[0, 0, 0, 1])
+            >> _kdf_name: length_bytes!(be_u32)
+            >> _kdf_options: length_bytes!(be_u32)
+            >> _key_count: tag!(&[0, 0, 0, 1])
             >> key: length_bytes!(be_u32)
             >> (cipher_name, key)
     )

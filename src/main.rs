@@ -3,15 +3,21 @@ extern crate structopt;
 #[macro_use(StructOpt)]
 extern crate structopt_derive;
 extern crate tealeaves;
-use std::{env, fs, io};
 use std::path::PathBuf;
+use std::{env, fs, io};
 use structopt::StructOpt;
 use tealeaves::leaf::Leaf;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "tealeaves", about = "Helps you figure out SSH/TLS stuff")]
+#[structopt(
+    name = "tealeaves",
+    about = "Helps you figure out SSH/TLS stuff"
+)]
 struct Opt {
-    #[structopt(help = "Paths to files/directories of interest", parse(from_os_str))]
+    #[structopt(
+        help = "Paths to files/directories of interest",
+        parse(from_os_str)
+    )]
     paths: Vec<PathBuf>,
 }
 
@@ -24,7 +30,7 @@ fn tealeaves() -> io::Result<()> {
     // Gather the list of paths we will inspect
     // either command line args or by listing ~/.ssh
     let mut paths: Vec<PathBuf> = opt.paths;
-    if paths.len() < 1 {
+    if paths.is_empty() {
         // If no paths on command line, scan ~/.ssh
         match env::home_dir() {
             Some(home) => {

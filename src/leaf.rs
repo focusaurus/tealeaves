@@ -83,7 +83,7 @@ impl fmt::Display for Leaf {
                 output.push_str(&format!("\t🚨 Error: {}", message))
             }
         };
-        write!(out, "{}\n", output)
+        writeln!(out, "{}", output)
     }
 }
 

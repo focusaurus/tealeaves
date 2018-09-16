@@ -8,9 +8,9 @@ named!(
     nom_public_key<(&[u8], &[u8], &[u8])>,
     do_parse!(
         algorithm: value
-            >> separator: space_sep
+            >> _separator: space_sep
             >> payload: value
-            >> separator: space_sep
+            >> _separator: space_sep
             >> comment: is_not_s!("\r\n")
             >> (algorithm, payload, comment)
     )

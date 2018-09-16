@@ -39,7 +39,7 @@ impl fmt::Display for Certificate {
         } else {
             output.push_str("\n\t✓ expires ");
         }
-        output.push_str(&format!("{}", self.format_expiration()));
+        output.push_str(&self.format_expiration().to_string());
         // http://www.alvestrand.no/objectid/1.2.840.113549.1.1.5.html
         if self.algorithm == "1.2.840.113549.1.1.5" {
             output.push_str("\n\t🚨 insecure SHA1 signature algorithm");
