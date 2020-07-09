@@ -1,4 +1,3 @@
-#![feature(try_trait)]
 extern crate base64;
 extern crate nom_pem;
 extern crate rsfs;
